@@ -75,7 +75,7 @@ local netReceivers = {}
 local getPriv
 ---@class KModule
 ---A pcall wrapper for code that allows for modular code that can be stopped at any time.
----@overload fun(moduleName: string, entryPoint: fun(...), env : table?): KRegenResourcePool
+---@overload fun(moduleName: string, entryPoint: fun(...), env : table?): KModule
 ---@return KModule KModule
 KModule,getPriv = KClass(function(moduleName,entryPoint,env)
     KError.ValidateArg(1,"moduleName",KVarCondition.String(moduleName))
