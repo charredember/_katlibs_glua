@@ -3,7 +3,7 @@ if KFuncThrottler then return end
 local getPriv
 ---@class KFuncThrottler
 ---@overload fun(limiter: KRegenResourcePool): KFuncThrottler
----@return KFuncThrottler KQueue
+---@return KFuncThrottler KFuncThrottler
 ---Controls how fast a function is executed based on a resource.
 KFuncThrottler,getPriv = KClass(function(limiter)
     KError.ValidateArg(1,"limiter",KVarCondition.TableMeta(limiter,KRegenResourcePool,"KRegenResourcePool"))
