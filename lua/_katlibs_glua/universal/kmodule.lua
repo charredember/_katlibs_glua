@@ -122,7 +122,7 @@ KModule,getPriv = KClass(function(moduleName,entryPoint,env)
         end
 
         function addDisposeCB(key,callback)
-            if callback then KError.ValidateArg(1,"key",KVarCondition.Function(callback)) end
+            if callback then KError.ValidateArg(2,"callback",KVarCondition.Function(callback)) end
             disposeCBs[key] = callback
         end
 
@@ -334,3 +334,15 @@ net.Receive(NETSTRING_KMODULE,function(len,ply)
     if not netCallback then return end
     netCallback(len,ply)
 end)
+
+---Methods to interact with the current KModule context, if in one.
+CurrKModule = {}
+
+---@param callback function
+function CurrKModule.AddDisposeCB(key,callback)
+    Error("Not currently in a module context!")
+end
+
+function CurrKModule.Dispose()
+    Error("Not currently in a module context!")
+end
