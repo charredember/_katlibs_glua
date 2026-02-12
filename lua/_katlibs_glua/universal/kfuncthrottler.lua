@@ -14,9 +14,14 @@ KFuncThrottler,getPriv = KClass(function(limiter)
     return {
         Limiter = limiter,
         Queue = KQueue(),
-        UID = uidItr,
+        HookName = "KFuncThrottler" .. uidItr,
     }
 end)
+
+local function getWeakReference(object)
+    local weakReference = setmetatable({object},{__mode = "v"})
+    return function() return weakReference[1] end
+end
 
 ---Attempt to execute a function.<br>
 ---If resources do not allow, the function will instead be queued for when the resources are available.
@@ -25,12 +30,12 @@ end)
 ---@param ... any Arguments to pass.
 function KFuncThrottler:Execute(cost,func,...)
     local priv = getPriv(self)
+    local queue = priv.Queue
+
     local limiter = priv.Limiter
-    local max = priv.Limiter:GetMax()
+    local max = limiter:GetMax()
     KError.ValidateArg(1,"cost",KVarCondition.NumberInRange(cost,0,max))
     KError.ValidateArg(2,"func",KVarCondition.Function(func))
-
-    local queue = priv.Queue
 
     if not queue:Any() and limiter:Use(cost) then
         func(...)
@@ -38,19 +43,35 @@ function KFuncThrottler:Execute(cost,func,...)
     end
 
     queue:PushRight({cost,func,{...}})
-    local hookName = "KFuncThrottler" .. priv.UID
+
+    ---do not hold a direct reference to the limiter as an upvalue
+    ---so that it will properly cleanup if our parent throttler goes out of scope
+    local getLimiter = getWeakReference(limiter)
+
+    local hookName = priv.HookName
     limiter:SetHook(hookName,function(currVal)
         local queued = queue:GetLeft()
+
+        local limiterReference = getLimiter()
+        if not limiterReference then return end
+
         if not queued then
-            limiter:SetHook(hookName,nil)
+            limiterReference:SetHook(hookName,nil)
             return
         end
 
         local currCost = queued[1]
         if currCost > currVal then return end
 
-        limiter:Use(currCost)
+        limiterReference:Use(currCost)
         queued[2](unpack(queued[3]))
         queue:PopLeft()
     end)
+end
+
+---Resets the internal queue, clearing any queued operations.
+function KFuncThrottler:Clear()
+    local priv = getPriv(self)
+    priv.Queue = KQueue
+    priv.Limiter:SetHook(priv.HookName,nil)
 end
