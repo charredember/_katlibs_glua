@@ -53,10 +53,10 @@ end
 
 ---Adds a hook to this resource pool.<br>
 ---Automatically clears if this object is garbage collected.
----@param key any
+---@param key string
 ---@param func function
 function KRegenResourcePool:SetHook(key,func)
-    KError.ValidateArg(1,"key",KVarCondition.NotNull(key))
+    KError.ValidateArg(1,"key",KVarCondition.String(key))
     if func ~= nil then KError.ValidateArg(2,"func",KVarCondition.Function(func)) end
 
     getPriv(self).Hooks[key] = func

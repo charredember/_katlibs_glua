@@ -1,5 +1,7 @@
 if KFuncThrottler then return end
 
+local uidItr = 0
+
 local getPriv
 ---@class KFuncThrottler
 ---@overload fun(limiter: KRegenResourcePool): KFuncThrottler
@@ -8,9 +10,11 @@ local getPriv
 KFuncThrottler,getPriv = KClass(function(limiter)
     KError.ValidateArg(1,"limiter",KVarCondition.TableMeta(limiter,KRegenResourcePool,"KRegenResourcePool"))
 
+    uidItr = uidItr + 1
     return {
         Limiter = limiter,
         Queue = KQueue(),
+        UID = uidItr,
     }
 end)
 
@@ -34,10 +38,11 @@ function KFuncThrottler:Execute(cost,func,...)
     end
 
     queue:PushRight({cost,func,{...}})
-    limiter:SetHook(self,function(currVal)
+    local hookName = "KFuncThrottler" .. priv.UID
+    limiter:SetHook(hookName,function(currVal)
         local queued = queue:GetLeft()
         if not queued then
-            limiter:SetHook(self,nil)
+            limiter:SetHook(hookName,nil)
             return
         end
 
