@@ -48,6 +48,7 @@ KClass = setmetatable({},{
 
 		local newClass = {}
 		classes[newClass] = true
+		privateTable[newClass] = {}
 
 		local instantiateNewObject = getObjectFactory(params.Inherit,newClass,constructor,privateTable)
 		privateTable[newClass].__constructor = instantiateNewObject
