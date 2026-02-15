@@ -1,6 +1,6 @@
 local defaultValues = {
     --Pos - REQUIRED,
-    --Ang - REQUIRED,
+    --Angles - REQUIRED,
     --Model - REQUIRED,
     Color = Color(255,255,255,255),
     Material = "",
@@ -24,7 +24,7 @@ KModelData,getPriv = KClass(function(pos,ang,model)
     return {
         Model = model,
         Pos = pos,
-        Ang = ang,
+        Angles = ang,
     }
 end)
 
@@ -45,13 +45,13 @@ end
 ---@param value Angle
 function KModelData:SetAng(value)
     KError.ValidateArg(1,"value",KVarCondition.Angle(value))
-    getPriv(self).Ang = value
+    getPriv(self).Angles = value
 end
 
 ---SHARED<br>
 ---@return Angle
-function KModelData:GetAng()
-    return getPriv(self).Ang
+function KModelData:GetAngles()
+    return getPriv(self).Angles
 end
 
 ---SHARED<br>
@@ -270,7 +270,7 @@ end
 ---@param serializable table
 ---@return KModelData
 function KModelData.FromSerializable(serializable)
-    local newObject = KModelData(serializable.Pos,serializable.Ang,serializable.Model)
+    local newObject = KModelData(serializable.Pos,serializable.Angles,serializable.Model)
 
     if serializable.Color then newObject:SetColor(serializable.Color) end
     if serializable.Material then newObject:SetMaterial(serializable.Material) end
