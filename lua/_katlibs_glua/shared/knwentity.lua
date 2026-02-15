@@ -55,7 +55,11 @@ elseif CLIENT then
     ---@overload fun(eid : number): KNWEntity
     KNWEntity,getPriv = KClass(function(eid)
         local exists = activeEnts[eid]
-        if exists then return getPriv(exists) end
+        if exists then
+            local priv = getPriv(exists)
+            ---@cast priv table
+            return priv
+        end
 
         return {
             EntIndex = eid,
@@ -67,8 +71,7 @@ elseif CLIENT then
                 OnRemove = {},
             },
         }
-    end,{PrivateConstructor = true})
-    local instantiate = getPriv(KNWEntity).__Constructor
+    end)
 
     ---CLIENT<br>
     ---Reads a KNWEntity from a net message.
@@ -84,7 +87,7 @@ elseif CLIENT then
             return knwEnt
         end
 
-        knwEnt = instantiate(eid)
+        knwEnt = KNWEntity(eid)
         activeEnts[eid] = knwEnt
 
         t_Simple(0,function()

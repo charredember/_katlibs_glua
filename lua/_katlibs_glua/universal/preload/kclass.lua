@@ -35,7 +35,7 @@ end
 --- - boolean? privateConstructor
 --- - table? Inherit
 ---@class KClass
----@overload fun(constructor: (fun(...): table?), params: KClassParams) : (table, fun(any: any): table?)
+---@overload fun(constructor?: (fun(...): table), params?: KClassParams) : (table, fun(any: any): table?)
 KClass = setmetatable({},{
 	__call = function(_,constructor,params)
 		params = params or {}
