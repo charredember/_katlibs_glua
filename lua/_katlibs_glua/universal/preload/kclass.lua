@@ -35,7 +35,7 @@ end
 --- - boolean? privateConstructor
 --- - table? Inherit
 ---@class KClass
----@overload fun(constructor: fun(...): table?, params: KClassParams) : (table, fun(any: any): table?)
+---@overload fun(constructor: (fun(...): table?), params: KClassParams) : (table, fun(any: any): table?)
 KClass = setmetatable({},{
 	__call = function(_,constructor,params)
 		params = params or {}
@@ -51,7 +51,7 @@ KClass = setmetatable({},{
 		privateTable[newClass] = {}
 
 		local instantiateNewObject = getObjectFactory(params.Inherit,newClass,constructor,privateTable)
-		privateTable[newClass].__constructor = instantiateNewObject
+		privateTable[newClass].__Constructor = instantiateNewObject
 
 		local classMetaTable = {}
 		classMetaTable.__index = params.Inherit
