@@ -1,7 +1,5 @@
 if KAutoLoader then return end
 
-AddCSLuaFile()
-
 ---SHARED,STATIC<br>
 ---Loader for directories of lua files.
 KAutoLoader = {}
@@ -69,9 +67,3 @@ function KAutoLoader.IncludeDir(directory,params)
 		KAutoLoader.IncludeDir(directory .. v,params)
 	end
 end
-
-KAutoLoader.IncludeDir("_katlibs_glua/universal",{Realm = "sh",Recursive = false})
-KAutoLoader.IncludeDir("_katlibs_glua/shared",{Realm = "sh",Recursive = false})
-KAutoLoader.IncludeDir("_katlibs_glua/server",{Realm = "sv",Recursive = false})
-KAutoLoader.IncludeDir("_katlibs_glua/client",{Realm = "cl",Recursive = false})
-hook.Run("KatLibsLoaded")
