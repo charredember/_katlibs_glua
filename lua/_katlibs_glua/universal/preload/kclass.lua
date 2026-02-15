@@ -38,6 +38,7 @@ end
 ---@overload fun(constructor: fun(...): table?, params: KClassParams) : (table, fun(any: any): table?)
 KClass = setmetatable({},{
 	__call = function(_,constructor,params)
+		params = params or {}
 		constructor = constructor or function(...) end
 		KError.ValidateArg(1,"constructor",KVarCondition.Function(constructor))
 		if params.Inherit then KError.ValidateArg(2,"params.Inherit",KVarCondition.Table(params.Inherit)) end
