@@ -2,6 +2,8 @@ if KError then return end
 
 AddCSLuaFile()
 
+---SHARED,STATIC<br>
+---Standardized errors
 KError = {}
 
 local isnumber = isnumber
@@ -13,6 +15,8 @@ local getmetatable = getmetatable
 local s_format = string.format
 local error = error
 
+---SHARED,STATIC<br>
+---Conditions for parameter checking.
 KVarCondition = {
 	NotNull = function(val)
 		return {val ~= nil, "object"}
@@ -91,6 +95,7 @@ KVarCondition = {
 	end,
 }
 
+---SHARED,STATIC<br>
 ---Validate function argument.
 ---@param index number
 ---@param name string
@@ -100,6 +105,7 @@ function KError.ValidateArg(index,name,assertion)
 	error(s_format("arg #%i, [%s]: expected [%s].",index,name,assertion[2]))
 end
 
+---SHARED,STATIC<br>
 ---Validate function table argument values.
 ---@param index number
 ---@param name string

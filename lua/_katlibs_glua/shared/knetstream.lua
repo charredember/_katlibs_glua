@@ -6,7 +6,11 @@ local MAX_CHUNKS = 10e3
 local NETSTRING = "KNetStream"
 if SERVER then util.AddNetworkString(NETSTRING) end
 
+--SHARED, STATIC<br>
+--A static net stream implementation.
 KNetStream = {}
+
+--TODO: Make instanced
 
 do
     local limiter = KRegenResourcePool(MAX_BYTES_PER_SECOND,MAX_BYTES_PER_SECOND)
@@ -33,6 +37,7 @@ do
         netSend(players)
     end
 
+    ---SHARED,STATIC<br>
     ---Queue data to be sent to the opposite realm<br>
     ---@param id string
     ---@param data string
@@ -64,6 +69,7 @@ end
 do
     local receivers = {}
 
+    ---SHARED,STATIC<br>
     ---Set a callback for when a stream is fully received from the opposite realm<br>
     ---@param id string
     ---@param callback fun(data : string, ply : Player?)?

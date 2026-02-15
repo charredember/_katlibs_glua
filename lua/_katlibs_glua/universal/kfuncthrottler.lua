@@ -3,10 +3,10 @@ if KFuncThrottler then return end
 local uidItr = 0
 
 local getPriv
+---SHARED<br>
+---Controls how fast a function is executed based on a resource.
 ---@class KFuncThrottler
 ---@overload fun(limiter: KRegenResourcePool): KFuncThrottler
----@return KFuncThrottler KFuncThrottler
----Controls how fast a function is executed based on a resource.
 KFuncThrottler,getPriv = KClass(function(limiter)
     KError.ValidateArg(1,"limiter",KVarCondition.TableMeta(limiter,KRegenResourcePool,"KRegenResourcePool"))
 
@@ -23,6 +23,7 @@ local function getWeakReference(object)
     return function() return weakReference[1] end
 end
 
+---SHARED<br>
 ---Attempt to execute a function.<br>
 ---If resources do not allow, the function will instead be queued for when the resources are available.
 ---@param cost number
@@ -69,6 +70,7 @@ function KFuncThrottler:Execute(cost,func,...)
     end)
 end
 
+---SHARED<br>
 ---Resets the internal queue, clearing any queued operations.
 function KFuncThrottler:Clear()
     local priv = getPriv(self)

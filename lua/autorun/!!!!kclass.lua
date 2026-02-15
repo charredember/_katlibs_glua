@@ -2,59 +2,73 @@ local classes = setmetatable({},{__mode = "k"})
 
 local currObj,baseClassArgs
 
----@class KClass
----OOP implementation<br>
----Constructor returns initial table of private fields.
----If inheriting, elements of constructor vararg are passed into baseclass
----@overload fun(constructor: (fun(...): table?), inherit: table?, privateConstructor : boolean?) : (table, (fun(obj : table): table?), fun(...): table)
-KClass = setmetatable({},{
-	__call = function(_,constructor,inherit,privateConstructor)
-		constructor = constructor or function(...) end
-		KError.ValidateArg(1,"constructor",KVarCondition.Function(constructor))
+local function getObjectFactory(inheritedClass,newClass,constructor,privateTable)
+	return function(...)
+		local newObj = setmetatable({},{__index = newClass})
+		currObj = newObj
+		baseClassArgs = nil
 
-		if inherit then KError.ValidateArg(2,"params.Inherit",KVarCondition.Table(inherit)) end
+		local constructorPriv = constructor(...) or {}
 
-		local privTab = setmetatable({},{__mode = "k"})
-		local function getPriv(obj) return privTab[obj] end
-
-		local class = {}
-		classes[class] = true
-
-		local function instantiate(...)
-			local newObj = setmetatable({},{__index = class})
-			currObj = newObj
-			baseClassArgs = nil
-
-			local constructorPriv = constructor(...) or {}
-
-			if inherit then
-				if not baseClassArgs then error("Failed to call baseclass constructor in inherited class!") end
-				local priv = inherit(unpack(baseClassArgs))
-				table.Merge(priv,constructorPriv,true)
-				privTab[newObj] = priv
-			else
-				privTab[newObj] = constructorPriv
-			end
-
-			currObj = nil
-			return newObj
+		if inheritedClass then
+			if not baseClassArgs then error("Failed to call baseclass constructor in inherited newClass!") end
+			local priv = inheritedClass(unpack(baseClassArgs))
+			table.Merge(priv,constructorPriv,true)
+			privateTable[newObj] = priv
+		else
+			privateTable[newObj] = constructorPriv
 		end
 
-		setmetatable(class,{
-			__index = inherit,
-			__call = (privateConstructor == true) and nil or function(_,...) return instantiate(...) end,
-		})
+		currObj = nil
+		return newObj
+	end
+end
 
-		return class,getPriv,instantiate
+---@class KClassParams
+---@field Inherit KClass?
+---@field PrivateConstructor boolean?
+
+---SHARED<br>
+---OOP implementation<br>
+---
+---params:
+--- - boolean? privateConstructor
+--- - table? Inherit
+---@class KClass
+---@overload fun(constructor: fun(...): table?, params: KClassParams) : (table, fun(any: any): table?)
+KClass = setmetatable({},{
+	__call = function(_,constructor,params)
+		constructor = constructor or function(...) end
+		KError.ValidateArg(1,"constructor",KVarCondition.Function(constructor))
+		if params.Inherit then KError.ValidateArg(2,"params.Inherit",KVarCondition.Table(params.Inherit)) end
+
+		local privateTable = setmetatable({},{_mode = "k"})
+		local function getPriv(obj) return privateTable[obj] end
+
+		local newClass = {}
+		classes[newClass] = true
+
+		local instantiateNewObject = getObjectFactory(params.Inherit,newClass,constructor,privateTable)
+		privateTable[newClass].__constructor = instantiateNewObject
+
+		local classMetaTable = {}
+		classMetaTable.__index = params.Inherit
+		if not params.PrivateConstructor then
+			classMetaTable.__call = function(_,...) return instantiateNewObject(...) end
+		end
+		setmetatable(newClass,classMetaTable)
+		return newClass,getPriv
 	end
 })
 
+---SHARED<br>
 ---Get the current public object being instantiated.<br>
 ---<b><u>Can only be called inside constructors!<u/><b/>
 function KClass.GetSelf()
 	return currObj
 end
 
+---SHARED<br>
 ---Calls the baseclass constructor for inheritance.<br>
 ---<b><u>Can only be called inside constructors!<u/><b/>
 function KClass.CallBaseConstructor(...)

@@ -16,7 +16,7 @@ local NETSTRING_ENTREMOVED = "KEntityNetworking"
 if SERVER then
     util.AddNetworkString(NETSTRING_ENTREMOVED)
 
-    ---SERVER<br>
+    ---SERVER,STATIC<br>
     ---Writes an entity to the net message to be read as a KNWEntity clientside.
     ---@param ent Entity
     function net.WriteKNWEntity(ent)
@@ -48,12 +48,12 @@ elseif CLIENT then
         return activeEnts[e_EntIndex(self)]
     end
 
-    local getPriv,instantiate
-    ---A KNWEntity. Recommended not to call the constructor.
+    local getPriv
+    ---CLIENT,STATIC<br>
+    ---A clientside container for data about an entity that does not clear on clientside PVS deletion
     ---@class KNWEntity
     ---@overload fun(eid : number): KNWEntity
-    ---@returns KNWEntity
-    KNWEntity,getPriv,instantiate = KClass(function(eid)
+    KNWEntity,getPriv = KClass(function(eid)
         local exists = activeEnts[eid]
         if exists then return getPriv(exists) end
 
@@ -67,7 +67,8 @@ elseif CLIENT then
                 OnRemove = {},
             },
         }
-    end,nil,true)
+    end,{PrivateConstructor = true})
+    local instantiate = getPriv(KNWEntity).__Constructor
 
     ---CLIENT<br>
     ---Reads a KNWEntity from a net message.

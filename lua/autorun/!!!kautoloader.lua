@@ -2,6 +2,8 @@ if KAutoLoader then return end
 
 AddCSLuaFile()
 
+---SHARED,STATIC<br>
+---Loader for directories of lua files.
 KAutoLoader = {}
 
 local function nop() end

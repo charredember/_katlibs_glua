@@ -6,10 +6,10 @@ local Tick_Regen
 local regenerating = setmetatable({},{__mode = "k"})
 
 local getPriv
----@class KRegenResourcePool
+---SHARED<br>
 ---A number value that regenerates over time and can be used.
+---@class KRegenResourcePool
 ---@overload fun(max: number, regenRatePerSecond: number): KRegenResourcePool
----@return KRegenResourcePool KRegenResourcePool
 KRegenResourcePool,getPriv = KClass(function(max,regenRatePerSecond)
     KError.ValidateArg(1,"max",KVarCondition.NumberGreaterOrEqual(max,0))
     KError.ValidateArg(2,"regenRatePerSecond",KVarCondition.NumberGreaterOrEqual(regenRatePerSecond,0))
@@ -22,6 +22,7 @@ KRegenResourcePool,getPriv = KClass(function(max,regenRatePerSecond)
     }
 end)
 
+---SHARED<br>
 ---Uses the resource pool with the specified cost.
 ---@param cost number
 ---@return boolean success
@@ -39,18 +40,21 @@ function KRegenResourcePool:Use(cost)
     return true
 end
 
+---SHARED<br>
 ---Gets the maximum value of this resource pool.
 ---@return number max
 function KRegenResourcePool:GetMax()
     return getPriv(self).Max
 end
 
+---SHARED<br>
 ---Gets the current value of this resource pool.
 ---@return number value
 function KRegenResourcePool:Count()
     return getPriv(self).Amount
 end
 
+---SHARED<br>
 ---Adds a hook to this resource pool.<br>
 ---Automatically clears if this object is garbage collected.
 ---@param key string

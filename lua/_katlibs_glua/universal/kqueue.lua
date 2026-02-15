@@ -4,6 +4,7 @@ local getPriv
 ---@class KQueue
 ---@overload fun(): KQueue
 ---@return KQueue KQueue
+---SHARED<br>
 ---A queue data structure.
 KQueue,getPriv = KClass(function()
     return {
@@ -13,12 +14,14 @@ KQueue,getPriv = KClass(function()
     }
 end)
 
+---SHARED<br>
 function KQueue:Any()
     local priv = getPriv(self)
 
     return priv.first <= priv.last
 end
 
+---SHARED<br>
 function KQueue:Count()
     local priv = getPriv(self)
 
@@ -27,6 +30,7 @@ function KQueue:Count()
     return ct + 1
 end
 
+---SHARED<br>
 function KQueue:PushLeft(value)
     local priv = getPriv(self)
 
@@ -35,6 +39,7 @@ function KQueue:PushLeft(value)
     priv[first] = value
 end
 
+---SHARED<br>
 function KQueue:PushRight(value)
     local priv = getPriv(self)
 
@@ -43,18 +48,21 @@ function KQueue:PushRight(value)
     priv[last] = value
 end
 
+---SHARED<br>
 function KQueue:GetLeft()
     local priv = getPriv(self)
 
     return priv[priv.first]
 end
 
+---SHARED<br>
 function KQueue:GetRight()
     local priv = getPriv(self)
 
     return priv[priv.last]
 end
 
+---SHARED<br>
 function KQueue:PopLeft()
     local priv = getPriv(self)
 
@@ -67,6 +75,7 @@ function KQueue:PopLeft()
     return value
 end
 
+---SHARED<br>
 function KQueue:PopRight()
     local priv = getPriv(self)
 
@@ -81,6 +90,7 @@ end
 
 local noOp = function() return nil end
 
+---SHARED<br>
 ---Returns an iterator function for this queue.
 function KQueue:Iterator()
     local priv = getPriv(self)

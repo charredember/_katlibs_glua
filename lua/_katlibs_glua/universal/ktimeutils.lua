@@ -1,4 +1,4 @@
----UNIVERSAL, STATIC<br>
+---SHARED, STATIC<br>
 ---Time related utilities for program control flow and animation.
 KTimeUtils = {}
 
@@ -11,6 +11,7 @@ local KError_ValidateArg = KError.ValidateArg
 local KVarCondition_NumberGreater = KVarCondition.NumberGreater
 local KVarCondition_Function = KVarCondition.Function
 
+---SHARED, STATIC<br>
 ---A tween that runs inside a coroutine.<br>
 ---Blocks the current thread until the duration has finished.
 ---@param duration number
