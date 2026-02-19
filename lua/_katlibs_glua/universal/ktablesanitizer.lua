@@ -160,7 +160,6 @@ function KTableSanitizer(tableStructure,customTypeStructures)
 
 	local fullCode = s_format(GENERATED_CODE_TEMPLATE,t_concat(evaluationFunctions))
 	local performCheck,getError = CompileString(fullCode,"KTableSanitizer")()
-	file.Write("test.txt",fullCode)
 
 	return function(check)
 		local sanitized = {}
