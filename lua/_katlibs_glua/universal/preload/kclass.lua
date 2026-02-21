@@ -1,5 +1,3 @@
-local t_Merge = table.Merge
-
 local classDirectory = setmetatable({},{__mode = "k"})
 local currObj,baseClassArgs
 
