@@ -54,7 +54,7 @@ elseif CLIENT then
     ---@class KNWEntity
     KNWEntity,getPriv = KClass()
 
-    local privateConstructor = getPriv(KNWEntity):GetFactory(function(eid)
+    local privateConstructor = getPriv(KNWEntity).GetFactory(function(eid)
         return {
             EntIndex = eid,
             NWTime = SysTime(),
