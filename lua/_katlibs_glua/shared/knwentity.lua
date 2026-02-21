@@ -43,7 +43,7 @@ elseif CLIENT then
 
     ---CLIENT<br>
     ---Gets an entity's KNWEntity.
-    ---@returns KNWEntity
+    ---@return KNWEntity?
     function ent_meta:GetKNWEntity()
         return activeEnts[e_EntIndex(self)]
     end
@@ -52,15 +52,9 @@ elseif CLIENT then
     ---CLIENT,STATIC<br>
     ---A clientside container for data about an entity that does not clear on clientside PVS deletion
     ---@class KNWEntity
-    ---@overload fun(eid : number): KNWEntity
-    KNWEntity,getPriv = KClass(function(eid)
-        local exists = activeEnts[eid]
-        if exists then
-            local priv = getPriv(exists)
-            ---@cast priv table
-            return priv
-        end
+    KNWEntity,getPriv = KClass()
 
+    local privateConstructor = getPriv(KNWEntity):GetFactory(function(eid)
         return {
             EntIndex = eid,
             NWTime = SysTime(),
@@ -75,7 +69,7 @@ elseif CLIENT then
 
     ---CLIENT<br>
     ---Reads a KNWEntity from a net message.
-    ---@returns KNWEntity
+    ---@return KNWEntity
     function net.ReadKNWEntity()
         local eid = n_ReadUInt(13)
         local knwEnt = activeEnts[eid]
@@ -87,15 +81,16 @@ elseif CLIENT then
             return knwEnt
         end
 
-        knwEnt = KNWEntity(eid)
+        knwEnt = privateConstructor(eid)
         activeEnts[eid] = knwEnt
 
         t_Simple(0,function()
+            if not activeEnts[eid] then return end
+
             local ent = Entity(eid)
             if not IsValid(ent) then return end
 
             local priv = getPriv(knwEnt)
-
             priv.Active = true
             callHooks(priv,"OnInitialize",eid,ent)
         end)
@@ -104,25 +99,37 @@ elseif CLIENT then
     end
 
     ---CLIENT<br>
+    ---Gets an KNWEntity's by its entity index, if it exists.
+    ---@param eid KNWEntity?
+    ---@return KNWEntity?
+    function KNWEntity.GetByEntIndex(eid)
+        return activeEnts[eid]
+    end
+
+    ---CLIENT<br>
     ---Gets an KNWEntity's Entity.
+    ---@return Entity
     function KNWEntity:GetEntity()
         return Entity(getPriv(self).EntIndex)
     end
 
     ---CLIENT<br>
     ---Gets an KNWEntity's entity index.
+    ---@return number
     function KNWEntity:EntIndex()
         return getPriv(self).EntIndex
     end
 
     ---CLIENT<br>
     ---Returns the time in seconds since this KNWEntity was registered.
+    ---@return number
     function KNWEntity:GetNWLifetime()
         return SysTime() - getPriv(self).NWTime
     end
 
     ---CLIENT<br>
     ---Returns if this KNWEntity has only been registered once.
+    ---@return boolean
     function KNWEntity:IsFirstTimeNetworked()
         return getPriv(self).IsFirstTimeNetworked
     end
@@ -141,6 +148,15 @@ elseif CLIENT then
         local hookTab = getPriv(self).Hooks[hooktype]
         if not hookTab then return end
         hookTab[id] = func
+    end
+
+    ---CLIENT<br>
+    ---Calls a function if the KNWEntity's Entity is currently valid.
+    --- @param func function
+    function KNWEntity:CallIfValid(func,...)
+        KError.ValidateArg(1,"func",KVarCondition.Function(func))
+        if not IsValid(Entity(getPriv(self).EntIndex)) then return end
+        func(...)
     end
 
     hook.Add("NetworkEntityCreated","KNWEntity",function(ent)
