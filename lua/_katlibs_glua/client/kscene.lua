@@ -12,12 +12,22 @@ local clr_meta = FindMetaTable("Color")
 local clr_ToHex = clr_meta.ToHex
 ---@class IMesh
 local im_meta = FindMetaTable("IMesh")
-local im_BuildFromTriangles = im_meta.BuildFromTriangles
 local im_Draw = im_meta.Draw
 local im_Destroy = im_meta.Destroy
 local v_meta = FindMetaTable("Vector")
 local v_Dot = v_meta.Dot
 
+local mesh_Begin = mesh.Begin
+local mesh_Position = mesh.Position
+local mesh_Normal = mesh.Normal
+local mesh_TexCoord = mesh.TexCoord
+local mesh_TangentS = mesh.TangentS
+local mesh_TangentT = mesh.TangentT
+local mesh_UserData = mesh.UserData
+local mesh_Color = mesh.Color
+local mesh_AdvanceVertex = mesh.AdvanceVertex
+local mesh_End = mesh.End
+local m_ceil = math.ceil
 local util_IntersectRayWithPlane = util.IntersectRayWithPlane
 local t_insert = table.insert
 local m_Round = math.Round
@@ -57,7 +67,7 @@ do --mesh clipping
 		--intersection1-o----o-intersection2--------planeOrigin-o--
 				  base1/______\ base2
 		]]
-		local vectorPoint,normalPoint,uPoint,vPoint = meshVertexPoint.pos,meshVertexPoint.normal,meshVertexPoint.u,meshVertexPoint.v
+		local vectorPoint,normalPoint,binormalPoint,tangentPoint,uPoint,vPoint = meshVertexPoint.pos,meshVertexPoint.normal,meshVertexPoint.binormal,meshVertexPoint.tangent,meshVertexPoint.u,meshVertexPoint.v
 		local vectorBase1,uBase1,vBase1 = meshVertexBase1.pos,meshVertexBase1.u,meshVertexBase1.v
 		local vectorBase2,uBase2,vBase2 = meshVertexBase2.pos,meshVertexBase2.u,meshVertexBase2.v
 		local vectorIntersection1 = util_IntersectRayWithPlane(vectorPoint,vectorBase1 - vectorPoint,planeOrigin,planeNormal)
@@ -65,8 +75,8 @@ do --mesh clipping
 		local uIntersection1,vIntersection1 = (uPoint + uBase1) / 2, (vPoint + vBase1) / 2
 		local uIntersection2,vIntersection2 = (uPoint + uBase2) / 2, (vPoint + vBase2) / 2
 
-		local meshVertexIntersection1 = { pos = vectorIntersection1, normal = normalPoint, u = uIntersection1, v = vIntersection1 }
-		local meshVertexIntersection2 = { pos = vectorIntersection2, normal = normalPoint, u = uIntersection2, v = vIntersection2 }
+		local meshVertexIntersection1 = { pos = vectorIntersection1, normal = normalPoint, binormal = binormalPoint, tangent = tangentPoint, u = uIntersection1, v = vIntersection1 }
+		local meshVertexIntersection2 = { pos = vectorIntersection2, normal = normalPoint, binormal = binormalPoint, tangent = tangentPoint, u = uIntersection2, v = vIntersection2 }
 
 		--add point triangle
 		t_insert(splitPoint,meshVertexPoint)
@@ -81,7 +91,6 @@ do --mesh clipping
 		t_insert(splitBase,meshVertexBase2)
 		t_insert(splitBase,meshVertexIntersection2)
 		t_insert(splitBase,meshVertexIntersection1)
-
 	end
 
 	local function sortTriangleToSide(splitA,splitB,meshVertex1,meshVertex2,meshVertex3,planeOrigin,planeNormal)
@@ -164,12 +173,12 @@ do --convert KModelData into MeshVertexes
 
 	local normalMatrix = Matrix()
 	local modelMatrix = Matrix()
+	local ANG_FIX = Angle(0,90,0)
 
-	local angFix = Angle(0,90,0)
 	local function appendModelTriangleData(triangles,modelData)
 		vm_Identity(normalMatrix)
 		vm_SetAngles(normalMatrix,kmd_GetAngles(modelData))
-		vm_Rotate(modelMatrix,angFix)
+		vm_Rotate(modelMatrix,ANG_FIX)
 
 		modelMatrix:Set(normalMatrix)
 		vm_SetTranslation(modelMatrix,kmd_GetPos(modelData))
@@ -188,16 +197,16 @@ do --convert KModelData into MeshVertexes
 
 		for _,meshVertex in pairs(modelTriangles) do
 			local normal = roundVector(normalMatrix * meshVertex.normal)
+			local binormal = meshVertex.binormal and roundVector(normalMatrix * meshVertex.binormal)
+			local tangent = meshVertex.tangent and roundVector(normalMatrix * meshVertex.tangent)
 			local pos = roundVector(modelMatrix * meshVertex.pos)
-
-			meshVertex.tangent = nil
-			meshVertex.binormal = nil
-			meshVertex.userdata = nil
-			meshVertex.weights = nil
 
 			t_insert(triangles,{
 				pos = pos,
 				normal = normal,
+				binormal = binormal,
+				tangent = tangent,
+				userdata = meshVertex.userdata,
 				u = meshVertex.u,
 				v = meshVertex.v,
 			})
@@ -258,7 +267,7 @@ local function splitSequentialTableByCount(tableToSplit,desiredCount)
 	if #tableToSplit < desiredCount then return {tableToSplit} end
 	local result = {}
 	local currCount = #tableToSplit
-	local tablesNeeded = math.ceil(currCount / desiredCount)
+	local tablesNeeded = m_ceil(currCount / desiredCount)
 
 	local itr = 0
 
@@ -278,15 +287,6 @@ local function splitSequentialTableByCount(tableToSplit,desiredCount)
 	return result
 end
 
-local function buildRenderFunction(newMesh,material,colorRed,colorGreen,colorBlue,colorAlpha)
-	return function()
-		r_SetMaterial(material)
-		r_SetColorModulation(colorRed,colorGreen,colorBlue)
-		r_SetBlend(colorAlpha)
-		im_Draw(newMesh)
-	end
-end
-
 function KScene:Destroy()
 	local priv = getPriv(self)
 
@@ -302,6 +302,33 @@ function KScene:Destroy()
 end
 local ksc_Destroy = KScene.Destroy
 
+if not ktestent2 then
+	local new = ents.CreateClientside("base_anim")
+	new:SetModel("models/hunter/plates/plate.mdl")
+	new:DrawShadow(false)
+	--infoEnt.Draw = drawModel
+	new.GetRenderMesh = function(self) return self.meshTab end
+	new:Spawn()
+	new:Activate()
+
+	ktestent2 = new
+end
+
+local function buildRenderFunction(newMesh,material,colorRed,colorGreen,colorBlue,colorAlpha)
+	local meshTab = {newMesh,material,Entity(366):GetWorldTransformMatrix()}
+
+	return function()
+		r_SetMaterial(material)
+		r_SetColorModulation(colorRed,colorGreen,colorBlue)
+		r_SetBlend(colorAlpha)
+
+		ktestent2.meshTab = meshTab
+		ktestent2:SetupBones()
+		ktestent2:DrawModel()
+		--im_Draw(newMesh)
+	end
+end
+
 local MAX_TRIS_PER_MESH = 65535
 function KScene:Compile()
 	ksc_Destroy(self)
@@ -315,10 +342,10 @@ function KScene:Compile()
 	for _,visualPropertyGroup in pairs(priv.MeshData) do
 		local material = Material(visualPropertyGroup.Material)
 		local color = visualPropertyGroup.Color
-		local colorRed = color.r
-		local colorGreen = color.g
-		local colorBlue = color.b
-		local colorAlpha = color.a
+		local colorRed = color.r / 255
+		local colorGreen = color.g / 255
+		local colorBlue = color.b / 255
+		local colorAlpha = color.a / 255
 
 		local renderGroup = visualPropertyGroup.RenderGroup
 		local destination =
@@ -328,7 +355,29 @@ function KScene:Compile()
 
 		for _,triangleData in pairs(splitSequentialTableByCount(visualPropertyGroup.TriangleData,MAX_TRIS_PER_MESH)) do
 			local newMesh = Mesh()
-			im_BuildFromTriangles(newMesh,triangleData)
+			mesh_Begin(newMesh,MATERIAL_TRIANGLES,#triangleData)
+			for i = 1, #triangleData do
+				local meshVertex = triangleData[i]
+
+				mesh_Position(meshVertex.pos)
+				mesh_Normal(meshVertex.normal)
+				mesh_TexCoord(0,meshVertex.u,meshVertex.v)
+
+				local binormal = meshVertex.binormal
+				if binormal then mesh_TangentS(binormal) end
+
+				local tangent = meshVertex.tangent
+				if tangent then mesh_TangentT(tangent) end
+
+				local userdata = meshVertex.userdata
+				if userdata then mesh_UserData(userdata[1],userdata[2],userdata[3],userdata[4]) end
+
+				mesh_Color(255,255,255,255)
+
+				mesh_AdvanceVertex()
+			end
+			mesh_End()
+
 			t_insert(meshes,newMesh)
 			t_insert(destination,buildRenderFunction(newMesh,material,colorRed,colorGreen,colorBlue,colorAlpha))
 		end
