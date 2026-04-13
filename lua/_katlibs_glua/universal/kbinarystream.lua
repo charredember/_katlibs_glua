@@ -314,13 +314,13 @@ do --read/write
 	local writeDouble = KBinaryStream.WriteDouble
 
 	---SHARED<br/>
-	---Writes a string to the byte stream.
+	---Reads a string from the byte stream.
 	function KBinaryStream:ReadString()
 		return readUntil(self,NULL_TERMINATOR)
 	end
 
 	---SHARED<br/>
-	---Reads a string from the byte stream.
+	---Writes a string to the byte stream.
 	---@param str string
 	function KBinaryStream:WriteString(str)
 		write(self,str .. NULL_TERMINATOR)
