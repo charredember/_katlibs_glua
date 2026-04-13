@@ -110,6 +110,7 @@ do --set/get properties
 
 	---SHARED<br/>
 	---Gets the current size of the byte stream.<br/>
+	---@return integer
 	function KBinaryStream:GetSize()
 		return #getPriv(self).ByteStream
 	end
@@ -117,12 +118,14 @@ do --set/get properties
 	---SHARED<br/>
 	---Gets the current read/write position of the stream.<br/>
 	---Zero indexed.
+	---@return integer
 	function KBinaryStream:GetPosition()
 		return getPriv(self).Position
 	end
 
 	---SHARED<br/>
 	---Returns the byte stream.
+	---@return string
 	function KBinaryStream:GetStream()
 		return getPriv(self).ByteStream
 	end
