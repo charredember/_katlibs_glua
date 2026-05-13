@@ -167,7 +167,7 @@ do --public static functions
 	---Writes a MeshVertex to a KBinaryStream.
 	---@param stream KBinaryStream
 	---@param meshVertex MeshVertex
-	function KMeshUtils.WriteVertexToBinaryStream(stream,meshVertex,threaded)
+	function KMeshUtils.WriteVertexToBinaryStream(stream,meshVertex)
 		stream:WriteVector(meshVertex.pos)
 		stream:WriteDouble(meshVertex.u)
 		stream:WriteDouble(meshVertex.v)
@@ -180,14 +180,12 @@ do --public static functions
 		writeNullable(stream,stream.WriteDouble,meshVertex.v1)
 		writeNullable(stream,writeUserdata,meshVertex.userdata)
 		writeNullable(stream,writeWeights,meshVertex.weights)
-
-		if threaded then coroutine.yield() end
 	end
 
 	---Reads a MeshVertex from a KBinaryStream.
 	---@param stream KBinaryStream
 	---@return MeshVertex
-	function KMeshUtils.ReadVertexFromBinaryStream(stream,threaded)
+	function KMeshUtils.ReadVertexFromBinaryStream(stream)
 		local meshVertex = {}
 		meshVertex.pos = stream:ReadVector()
 		meshVertex.u = stream:ReadDouble()
@@ -203,6 +201,52 @@ do --public static functions
 		meshVertex.weights = readNullable(stream,readWeights)
 
 		return meshVertex
+	end
+
+	local writeVertex = KMeshUtils.WriteVertexToBinaryStream
+	local readVertex = KMeshUtils.ReadVertexFromBinaryStream
+
+	---Writes a KVisualPropertyGroup to a KBinaryStream.
+	---@param stream KBinaryStream
+	---@param visualPropertyGroup KVisualPropertyGroup
+	---@param threaded boolean?
+	function KMeshUtils.WriteVisualPropertyGroupToBinaryStream(stream,visualPropertyGroup,threaded)
+		stream:WriteColor(visualPropertyGroup.Color)
+		stream:WriteString(visualPropertyGroup.Material)
+		writeNullable(stream,stream.WriteUInt8,visualPropertyGroup.RenderGroup)
+		writeNullable(stream,stream.WriteUInt8,visualPropertyGroup.RenderMode)
+
+		local vertexes = visualPropertyGroup.MeshVertexes
+		local numVertexes = #vertexes
+		stream:WriteUInt32(numVertexes)
+
+		for i = 1,numVertexes do
+			writeVertex(stream,vertexes[i])
+			if threaded then coroutine.yield() end
+		end
+	end
+
+	---Reads a KVisualPropertyGroup from a KBinaryStream.
+	---@param stream KBinaryStream
+	---@param threaded boolean?
+	---@return KVisualPropertyGroup
+	function KMeshUtils.ReadVisualPropertyGroupFromBinaryStream(stream,threaded)
+		local visualPropertyGroup = {MeshVertexes = {}}
+
+		visualPropertyGroup.Color = stream:ReadColor()
+		visualPropertyGroup.Material = stream:ReadString()
+		visualPropertyGroup.RenderGroup = readNullable(stream,stream.ReadUInt8)
+		visualPropertyGroup.RenderMode = readNullable(stream,stream.ReadUInt8)
+
+		local vertexes = visualPropertyGroup.MeshVertexes
+		local numVertexes = stream:ReadUInt32()
+
+		for i = 1,numVertexes do
+			vertexes[i] = readVertex(stream)
+			if threaded then coroutine.yield(i / numVertexes) end
+		end
+
+		return visualPropertyGroup
 	end
 end
 
@@ -437,7 +481,7 @@ do --helper functions: read and write meshvertex structures to KBinaryStream
 	---@param weights BoneWeight[]
 	function writeWeights(stream,weights)
 		local numWeights = #weights
-		stream:WriteDouble(numWeights)
+		stream:WriteUInt8(numWeights)
 
 		for i = 1,numWeights do
 			local weight = weights[i]
@@ -450,7 +494,7 @@ do --helper functions: read and write meshvertex structures to KBinaryStream
 	---@param stream KBinaryStream
 	function readWeights(stream)
 		local weights = {}
-		local numWeights = stream:ReadDouble()
+		local numWeights = stream:ReadUInt8()
 
 		local totalWeight = 0
 		for i = 1,numWeights do

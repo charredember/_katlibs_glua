@@ -72,6 +72,11 @@ end)
 local getFactory = getPriv(KScene).GetFactory
 
 local jsonConstructor = getFactory(function(priv)
+	priv.Meshes = {}
+	priv.RenderOpaque = {}
+	priv.RenderBoth = {}
+	priv.RenderTransluscent = {}
+
 	return priv
 end)
 
@@ -254,52 +259,6 @@ end
 
 function KScene:IsValid() return #getPriv(self).Meshes > 0 end
 
---[[
-local visualPropertyGroupSanitizer = KTableSanitizer({
-	MeshData = "VisualPropertyGroup[]",
-	BoneIndexes = "table",
-},{
-	VisualPropertyGroup = {
-		Color = {
-			r = "number",
-			g = "number",
-			b = "number",
-			a = "number",
-		},
-		Material = "string",
-		RenderGroup = "number",
-		RenderMode = "number",
-		MeshVertexes = "MeshVertexes[]",
-	},
-	MeshVertexes = {
-		color = {
-			r = "number",
-			g = "number",
-			b = "number",
-			a = "number",
-		},
-		pos = "Vector",
-		normal = "Vector",
-		tangent = "Vector?",
-		binormal = "Vector?",
-		u = "number?",
-		v = "number?",
-		userdata = "UserData[]?",
-		weights = "Weight[]?",
-	},
-	UserData = {
-		["1"] = "number",
-		["2"] = "number",
-		["3"] = "number",
-		["4"] = "number",
-	},
-	Weight = {
-		bone = "number",
-		weight = "number",
-	}
-})
-]]
-
 ---SHARED<br/>
 ---Gets a JSON-serializable table representing this object that can be used to recreate this object later.
 ---@return table
@@ -310,11 +269,6 @@ function KScene:GetSerializable()
 	return {
 		MeshData = table.Copy(priv.MeshData),
 		BoneIndexes = table.Copy(priv.BoneIndexes),
-
-		Meshes = {},
-		RenderOpaque = {},
-		RenderBoth = {},
-		RenderTransluscent = {},
 	}
 end
 
@@ -328,6 +282,26 @@ function KScene.FromSerializable(serializable)
 	--local sanitized,err = visualPropertyGroupSanitizer(serializable)
 	--if not sanitized then print(err) return end
 	return jsonConstructor(serializable)
+end
+
+function KScene.WriteToBinaryStream(stream,scene,threaded)
+	local serializable = getPriv(scene)
+
+	local visualPropertyGroups = serializable.MeshData
+	local visualPropertyGroupCount = #visualPropertyGroups
+	stream:WriteUInt16(visualPropertyGroupCount)
+
+	for i = 1,visualPropertyGroupCount do
+		print(i,visualPropertyGroupCount)
+		KMeshUtils.WriteVisualPropertyGroupToBinaryStream(stream,visualPropertyGroups[i],threaded)
+	end
+
+	local bones = serializable.BoneIndexes
+	stream:WriteUInt16(table.Count(bones))
+	for bone,index in pairs(bones) do
+		stream:WriteString(bone)
+		stream:WriteUInt8(index)
+	end
 end
 
 hook.Run("KatLibsLoaded")
