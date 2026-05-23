@@ -18,6 +18,7 @@ local vm_SetScale = vm_meta.SetScale
 ---@class Color
 local clr_meta = FindMetaTable("Color")
 local clr_ToHex = clr_meta.ToHex
+---@class Vector
 local v_meta = FindMetaTable("Vector")
 local v_Dot = v_meta.Dot
 ---@class IMesh
@@ -138,7 +139,7 @@ do --public static functions
 			local color = kmd_GetColor(currModelData)
 			local renderGroup = kmd_GetRenderGroup(currModelData)
 			local renderMode = kmd_GetRenderMode(currModelData)
-			local boneIndex = modelBoneLookup[currModelData]
+			local boneIndex = modelBoneLookup and modelBoneLookup[currModelData]
 
 			local visualPropertyKey = util_SHA256(
 				material
@@ -167,7 +168,9 @@ do --public static functions
 	---Writes a MeshVertex to a KBinaryStream.
 	---@param stream KBinaryStream
 	---@param meshVertex MeshVertex
-	function KMeshUtils.WriteVertexToBinaryStream(stream,meshVertex)
+	function KMeshUtils.WriteVertexToStream(stream,meshVertex)
+		local st = SysTime()
+
 		stream:WriteVector(meshVertex.pos)
 		stream:WriteDouble(meshVertex.u)
 		stream:WriteDouble(meshVertex.v)
@@ -203,14 +206,14 @@ do --public static functions
 		return meshVertex
 	end
 
-	local writeVertex = KMeshUtils.WriteVertexToBinaryStream
+	local writeVertex = KMeshUtils.WriteVertexToStream
 	local readVertex = KMeshUtils.ReadVertexFromBinaryStream
 
 	---Writes a KVisualPropertyGroup to a KBinaryStream.
 	---@param stream KBinaryStream
 	---@param visualPropertyGroup KVisualPropertyGroup
 	---@param threaded boolean?
-	function KMeshUtils.WriteVisualPropertyGroupToBinaryStream(stream,visualPropertyGroup,threaded)
+	function KMeshUtils.WriteVisualPropertyGroupToStream(stream,visualPropertyGroup,threaded)
 		stream:WriteColor(visualPropertyGroup.Color)
 		stream:WriteString(visualPropertyGroup.Material)
 		writeNullable(stream,stream.WriteUInt8,visualPropertyGroup.RenderGroup)

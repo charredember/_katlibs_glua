@@ -23,20 +23,10 @@ do --set/get properties
 	function KStream:Reset() end
 
 	---SHARED, ABSTRACT<br/>
-	---Gets the current size of the byte stream.<br/>
-	---@return integer
-	function KStream:GetSize() end
-
-	---SHARED, ABSTRACT<br/>
 	---Gets the current read/write position of the stream.<br/>
 	---Zero indexed.
 	---@return integer
-	function KStream:GetPosition() end
-
-	---SHARED, ABSTRACT<br/>
-	---Returns the byte stream.
-	---@return string
-	function KStream:GetStream() end
+	function KStream:Tell() end
 end
 
 do --read/write

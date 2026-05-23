@@ -24,7 +24,7 @@ local convertBytesToInt,convertToBytesFromInt,unpackIEEE754Double,packIEEE754Dou
 
 local getPriv
 ---SHARED<br/>
----@class KBinaryStream
+---@class KBinaryStream : KStream
 ---@overload fun(str?: string): KBinaryStream
 KBinaryStream,getPriv = KClass(function(str)
 	KError.ValidateNullableArg("str",KVarConditions.String(str))
@@ -86,7 +86,7 @@ do -- static
 end
 
 do --set/get properties
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Sets the current read/write position of the stream.<br/>
 	---Zero indexed.
 	---@param int integer
@@ -94,7 +94,7 @@ do --set/get properties
 		getPriv(self).Position = 1 + int
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Skips the current read/write position forward by the specified amount of bytes.<br/>
 	---@param int integer
 	function KBinaryStream:Skip(int)
@@ -102,10 +102,18 @@ do --set/get properties
 		priv.Position = priv.Position + int
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Resets the current read/write position back to zero.<br/>
 	function KBinaryStream:Reset()
 		getPriv(self).Position = 1
+	end
+
+	---SHARED, OVERRIDE<br/>
+	---Gets the current read/write position of the stream.<br/>
+	---Zero indexed.
+	---@return integer
+	function KBinaryStream:Tell()
+		return getPriv(self).Position
 	end
 
 	---SHARED<br/>
@@ -113,14 +121,6 @@ do --set/get properties
 	---@return integer
 	function KBinaryStream:GetSize()
 		return #getPriv(self).ByteStream
-	end
-
-	---SHARED<br/>
-	---Gets the current read/write position of the stream.<br/>
-	---Zero indexed.
-	---@return integer
-	function KBinaryStream:GetPosition()
-		return getPriv(self).Position
 	end
 
 	---SHARED<br/>
@@ -136,7 +136,7 @@ do --read/write
 	local getInt16BytesLE = KBinaryStream.Int16ToBytesLE
 	local getInt32BytesLE = KBinaryStream.Int32ToBytesLE
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Reads the specified amount of bytes from the stream.
 	---@param amount integer
 	function KBinaryStream:Read(amount)
@@ -148,7 +148,7 @@ do --read/write
 		return bytes
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Writes the specified bytes to the stream.
 	---@param bytes string
 	function KBinaryStream:Write(bytes)
@@ -171,7 +171,7 @@ do --read/write
 	local read = KBinaryStream.Read
 	local write = KBinaryStream.Write
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Reads from the byte stream until the specified character is read.
 	---@param byte string
 	function KBinaryStream:ReadUntil(byte)
@@ -191,14 +191,14 @@ do --read/write
 
 	local readUntil = KBinaryStream.ReadUntil
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Reads an 8-bit unsigned integer from the byte stream.
 	---@return integer
 	function KBinaryStream:ReadUInt8()
 		return convertBytesToInt(read(self,1))
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Writes an 8-bit unsigned integer to the byte stream.
 	---@param int integer
 	function KBinaryStream:WriteUInt8(int)
@@ -216,7 +216,7 @@ do --read/write
 			+ readUInt8(self) * 0x100
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Writes a 16-bit unsigned integer to the byte stream.
 	---@param int integer
 	function KBinaryStream:WriteUInt16(int)
@@ -244,7 +244,7 @@ do --read/write
 
 	local readUInt32 = KBinaryStream.ReadUInt32
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Reads an 8-bit signed integer from the byte stream.
 	function KBinaryStream:ReadInt8()
 		local int = readUInt8(self)
@@ -252,14 +252,14 @@ do --read/write
 		return int
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Writes an 8-bit signed integer to the byte stream.
 	---@param int integer
 	function KBinaryStream:WriteInt8(int)
 		write(self,getInt8BytesLE(int))
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Reads a 16-bit signed integer from the byte stream.
 	function KBinaryStream:ReadInt16()
 		local int = readUInt16(self)
@@ -267,14 +267,14 @@ do --read/write
 		return int
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Writes a 16-bit signed integer to the byte stream.
 	---@param int integer
 	function KBinaryStream:WriteInt16(int)
 		write(self,getInt16BytesLE(int))
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Reads a 32-bit signed integer from the byte stream.
 	function KBinaryStream:ReadInt32()
 		local int = readUInt32(self)
@@ -282,14 +282,14 @@ do --read/write
 		return int
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Writes a 32-bit signed integer to the byte stream.
 	---@param int integer
 	function KBinaryStream:WriteInt32(int)
 		write(self,getInt32BytesLE(int))
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Writes a 64-bit IEEE754 double to the byte stream.
 	function KBinaryStream:ReadDouble()
 		return unpackIEEE754Double(
@@ -303,7 +303,7 @@ do --read/write
 			readUInt8(self))
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Reads a 64-bit IEEE754 double from the byte stream.
 	---@param double number
 	function KBinaryStream:WriteDouble(double)
@@ -313,33 +313,33 @@ do --read/write
 	local readDouble = KBinaryStream.ReadDouble
 	local writeDouble = KBinaryStream.WriteDouble
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Reads a string from the byte stream.
 	function KBinaryStream:ReadString()
 		return readUntil(self,NULL_TERMINATOR)
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Writes a string to the byte stream.
 	---@param str string
 	function KBinaryStream:WriteString(str)
 		write(self,str .. NULL_TERMINATOR)
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Writes a bool to the byte stream.
 	---@param bool boolean
 	function KBinaryStream:WriteBool(bool)
 		writeUInt8(self,bool and TRUE or FALSE)
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Reads a bool from the byte stream.
 	function KBinaryStream:ReadBool()
-		return readUInt8(self) == TRUE and true or false
+		return readUInt8(self) == FALSE and false or true
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Writes a Vector to the byte stream.
 	---@param vec Vector
 	function KBinaryStream:WriteVector(vec)
@@ -348,7 +348,7 @@ do --read/write
 		writeDouble(self,vec.z)
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Reads a Vector from the byte stream.
 	function KBinaryStream:ReadVector()
 		return Vector(
@@ -357,7 +357,7 @@ do --read/write
 			readDouble(self))
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Writes a Color to the byte stream.
 	---@param color Color
 	function KBinaryStream:WriteColor(color)
@@ -367,7 +367,7 @@ do --read/write
 		writeUInt8(self,color.a)
 	end
 
-	---SHARED<br/>
+	---SHARED, OVERRIDE<br/>
 	---Reads a Color from the byte stream.
 	function KBinaryStream:ReadColor()
 		return Color(

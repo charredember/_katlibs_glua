@@ -284,7 +284,7 @@ function KScene.FromSerializable(serializable)
 	return jsonConstructor(serializable)
 end
 
-function KScene.WriteToBinaryStream(stream,scene,threaded)
+function KScene.WriteToStream(stream,scene,threaded)
 	local serializable = getPriv(scene)
 
 	local visualPropertyGroups = serializable.MeshData
@@ -292,8 +292,7 @@ function KScene.WriteToBinaryStream(stream,scene,threaded)
 	stream:WriteUInt16(visualPropertyGroupCount)
 
 	for i = 1,visualPropertyGroupCount do
-		print(i,visualPropertyGroupCount)
-		KMeshUtils.WriteVisualPropertyGroupToBinaryStream(stream,visualPropertyGroups[i],threaded)
+		KMeshUtils.WriteVisualPropertyGroupToStream(stream,visualPropertyGroups[i],threaded)
 	end
 
 	local bones = serializable.BoneIndexes
