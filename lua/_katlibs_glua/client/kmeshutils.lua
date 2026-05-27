@@ -165,8 +165,8 @@ do --public static functions
 		return table.ClearKeys(meshData)
 	end
 
-	---Writes a MeshVertex to a KBinaryStream.
-	---@param stream KBinaryStream
+	---Writes a MeshVertex to a KWriteStream.
+	---@param stream KWriteStream
 	---@param meshVertex MeshVertex
 	function KMeshUtils.WriteVertexToStream(stream,meshVertex)
 		local st = SysTime()
@@ -185,8 +185,8 @@ do --public static functions
 		writeNullable(stream,writeWeights,meshVertex.weights)
 	end
 
-	---Reads a MeshVertex from a KBinaryStream.
-	---@param stream KBinaryStream
+	---Reads a MeshVertex from a KReadStream.
+	---@param stream KReadStream
 	---@return MeshVertex
 	function KMeshUtils.ReadVertexFromBinaryStream(stream)
 		local meshVertex = {}
@@ -209,8 +209,8 @@ do --public static functions
 	local writeVertex = KMeshUtils.WriteVertexToStream
 	local readVertex = KMeshUtils.ReadVertexFromBinaryStream
 
-	---Writes a KVisualPropertyGroup to a KBinaryStream.
-	---@param stream KBinaryStream
+	---Writes a KVisualPropertyGroup to a KWriteStream.
+	---@param stream KWriteStream
 	---@param visualPropertyGroup KVisualPropertyGroup
 	---@param threaded boolean?
 	function KMeshUtils.WriteVisualPropertyGroupToStream(stream,visualPropertyGroup,threaded)
@@ -230,7 +230,7 @@ do --public static functions
 	end
 
 	---Reads a KVisualPropertyGroup from a KBinaryStream.
-	---@param stream KBinaryStream
+	---@param stream KReadStream
 	---@param threaded boolean?
 	---@return KVisualPropertyGroup
 	function KMeshUtils.ReadVisualPropertyGroupFromBinaryStream(stream,threaded)
@@ -462,7 +462,7 @@ do --helper functions: read and write meshvertex structures to KBinaryStream
 		return readFunc(stream,...)
 	end
 
-	---@param stream KBinaryStream
+	---@param stream KWriteStream
 	function writeUserdata(stream,userdata)
 		stream:WriteDouble(userdata[1])
 		stream:WriteDouble(userdata[2])
@@ -470,7 +470,7 @@ do --helper functions: read and write meshvertex structures to KBinaryStream
 		stream:WriteDouble(userdata[4])
 	end
 
-	---@param stream KBinaryStream
+	---@param stream KReadStream
 	function readUserdata(stream)
 		local userdata = {}
 		userdata[1] = stream:ReadDouble()
@@ -480,7 +480,7 @@ do --helper functions: read and write meshvertex structures to KBinaryStream
 		return userdata
 	end
 
-	---@param stream KBinaryStream
+	---@param stream KWriteStream
 	---@param weights BoneWeight[]
 	function writeWeights(stream,weights)
 		local numWeights = #weights
@@ -494,7 +494,7 @@ do --helper functions: read and write meshvertex structures to KBinaryStream
 		end
 	end
 
-	---@param stream KBinaryStream
+	---@param stream KReadStream
 	function readWeights(stream)
 		local weights = {}
 		local numWeights = stream:ReadUInt8()
