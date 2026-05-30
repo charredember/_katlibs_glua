@@ -19,6 +19,7 @@ local write,writeUInt8,writeUInt16,writeUInt32,writeIEEE754Double
 
 local getPriv
 ---SHARED<br/>
+---In-memory bit buffer.
 ---@class KBinaryWriteStream : KWriteStream
 ---@overload fun(str?: string): KBinaryWriteStream
 KBinaryWriteStream,getPriv = KClass(function()

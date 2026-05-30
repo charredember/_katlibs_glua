@@ -2,6 +2,7 @@
 
 local getPriv
 ---SHARED, ABSTRACT<br/>
+---Defines common behavior for write stream classes.
 ---@class KWriteStream
 ---@overload fun(str?: string): KWriteStream
 KWriteStream = {}

@@ -17,6 +17,7 @@ local math_huge = math.huge
 local fileHandles = setmetatable({},{__mode = "k"})
 
 ---SHARED, OVERRIDE<br/>
+---KStream wrapper for file.
 ---@class KFileWriteStream : KWriteStream
 ---@overload fun(path: string): KFileWriteStream
 KFileWriteStream = setmetatable({},{

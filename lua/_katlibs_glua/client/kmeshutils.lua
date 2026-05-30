@@ -229,11 +229,11 @@ do --public static functions
 		end
 	end
 
-	---Reads a KVisualPropertyGroup from a KBinaryStream.
+	---Reads a KVisualPropertyGroup from a KReadtream.
 	---@param stream KReadStream
 	---@param threaded boolean?
 	---@return KVisualPropertyGroup
-	function KMeshUtils.ReadVisualPropertyGroupFromBinaryStream(stream,threaded)
+	function KMeshUtils.ReadVisualPropertyGroupFromStream(stream,threaded)
 		local visualPropertyGroup = {MeshVertexes = {}}
 
 		visualPropertyGroup.Color = stream:ReadColor()

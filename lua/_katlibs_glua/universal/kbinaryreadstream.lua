@@ -11,10 +11,11 @@ local string_byte = string.byte
 local string_sub = string.sub
 local string_find = string.find
 
-local read,readBytes,readIEEE754Double
+local read,readBytes
 
 local getPriv
 ---SHARED<br/>
+---In-memory bit buffer.
 ---@class KBinaryReadStream : KReadStream
 ---@overload fun(str?: string): KBinaryReadStream
 KBinaryReadStream,getPriv = KClass(function(str)

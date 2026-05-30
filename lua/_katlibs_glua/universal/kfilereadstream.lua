@@ -23,6 +23,7 @@ local string_sub = string.sub
 local fileHandles = setmetatable({},{__mode = "k"})
 
 ---SHARED, OVERRIDE<br/>
+---KStream wrapper for file.
 ---@class KFileReadStream : KReadStream
 ---@overload fun(path: string): KFileReadStream
 KFileReadStream = setmetatable({},{

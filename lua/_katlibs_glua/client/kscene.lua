@@ -23,6 +23,8 @@ local r_SetColorModulation = render.SetColorModulation
 local STUDIO_RENDER = STUDIO_RENDER
 local STUDIO_DRAWTRANSLUCENTSUBMODELS = STUDIO_DRAWTRANSLUCENTSUBMODELS
 
+local emptyMatrix = Matrix()
+
 local kmr_DrawMesh
 hook.Add("KatLibsLoaded","KScene",function()
 	kmr_DrawMesh = KMeshUtils.DrawMesh
@@ -53,7 +55,7 @@ local function splitSequentialTableByCount(tableToSplit,desiredCount)
 end
 
 local getPriv
----SHARED<br/>
+---CLIENT<br/>
 ---A container object for IMeshes created from KModelData.
 ---@class KScene
 ---@overload fun(modelDataTable: KModelData[]): KScene
@@ -72,15 +74,26 @@ end)
 local getFactory = getPriv(KScene).GetFactory
 
 local jsonConstructor = getFactory(function(priv)
-	priv.Meshes = {}
-	priv.RenderOpaque = {}
-	priv.RenderBoth = {}
-	priv.RenderTransluscent = {}
+	local boneIndexes = priv.BoneIndexes
 
-	return priv
+	local boneMatrices = {}
+	for _,boneIndex in pairs(boneIndexes) do
+		boneMatrices[boneIndex] = emptyMatrix
+	end
+
+	return {
+		MeshData = priv.MeshData,
+		BoneIndexes = priv.BoneIndexes,
+
+		Meshes = {},
+		RenderOpaque = {},
+		RenderBoth = {},
+		RenderTransluscent = {},
+		BoneMatrices = table.Count(boneIndexes) > 0 and boneMatrices or nil,
+	}
 end)
 
----SHARED<br/>
+---CLIENT,STATIC<br/>
 ---Creates a new KScene with bones from named groups of KModelData.
 ---@type fun(kModelDataGroups: {[string] : KModelData[]} ): KScene
 KScene.CreateWithBones = getFactory(function(kModelDataBoneGroups)
@@ -89,7 +102,6 @@ KScene.CreateWithBones = getFactory(function(kModelDataBoneGroups)
 	local boneNameIndexLookup = {}
 	local boneMatrices = {}
 
-	local emptyMatrix = Matrix()
 	local boneCount = 0
 	for boneName,group in pairs(kModelDataBoneGroups) do
 		KError.ValidateKVArg("kModelDataBoneGroups",KVarConditions.String(boneName),KVarConditions.Table(group))
@@ -257,6 +269,10 @@ function KScene:SetBoneMatrix(boneName,matrix)
 	priv.BoneMatrices[index] = matrix
 end
 
+function KScene:GetBoneNames()
+	return table.GetKeys(getPriv(self).BoneIndexes)
+end
+
 function KScene:IsValid() return #getPriv(self).Meshes > 0 end
 
 ---SHARED<br/>
@@ -282,6 +298,29 @@ function KScene.FromSerializable(serializable)
 	--local sanitized,err = visualPropertyGroupSanitizer(serializable)
 	--if not sanitized then print(err) return end
 	return jsonConstructor(serializable)
+end
+
+---@return KScene
+function KScene.FromStream(stream,threaded)
+	local visualPropertyGroupCount = stream:ReadUInt16()
+
+	local meshData = {}
+	for i = 1,visualPropertyGroupCount do
+		meshData[i] = KMeshUtils.ReadVisualPropertyGroupFromStream(stream,threaded)
+	end
+
+	local boneCount = stream:ReadUInt16()
+	local boneIndexes = {}
+	for _ = 1,boneCount do
+		local boneName = stream:ReadString()
+		local boneID = stream:ReadUInt8()
+		boneIndexes[boneName] = boneID
+	end
+
+	return jsonConstructor({
+		MeshData = meshData,
+		BoneIndexes = boneIndexes,
+	})
 end
 
 function KScene.WriteToStream(stream,scene,threaded)
