@@ -36,8 +36,8 @@ local function removeChildTableKey(parentTab,childTabKey,childKey,callbackIfChil
     callbackIfChildTabEmpty()
 end
 
-local function obscureGlobalFunctionsInEnv(moduleEnv,globalLibraryName,functionTable)
-    moduleEnv[globalLibraryName] = setmetatable(functionTable,{__index = _G[globalLibraryName]})
+local function obscureGlobalFunctionsInEnv(moduleEnv,globalLibraryName,functionTable,parentEnv)
+    moduleEnv[globalLibraryName] = setmetatable(functionTable,{__index = parentEnv[globalLibraryName]})
 end
 
 local function addGlobalHook(hookFunctionsTable,hookType,onHookError)
@@ -215,24 +215,25 @@ KModule,getPriv = KClass(function(moduleName,entryPoint,env)
         end
     end
 
-    local moduleEnv = setmetatable(env or {},{__index = _G})
+    local parentEnv = getfenv(KClass.ConstructorStackSize())
+    local moduleEnv = setmetatable(env or {},{__index = parentEnv})
     do --env setup
         if SERVER then
             obscureGlobalFunctionsInEnv(moduleEnv,"util",{
                 AddNetworkString = addNetworkString,
-            })
+            },parentEnv)
         end
 
         obscureGlobalFunctionsInEnv(moduleEnv,"hook",{
             Add = addLocalHook,
             Remove = removeLocalHook,
             Run = runLocalHook,
-        })
+        },parentEnv)
 
         obscureGlobalFunctionsInEnv(moduleEnv,"net",{
             Start = netStartLocal,
             Receive = netReceiveLocal,
-        })
+        },parentEnv)
 
         moduleEnv.CurrKModule = {
             AddDisposeCB = addDisposeCB,

@@ -187,3 +187,7 @@ function KClass.Is(object,comparisonClass)
 	if not classInternals.ParentClasses[comparisonClass] then return false end
 	return true
 end
+
+---SHARED, STATIC<br/>
+---Get the stack traversal amount needed to reference the lua chunk where a KClass constructor is called.
+function KClass.ConstructorStackSize() return 4 end
