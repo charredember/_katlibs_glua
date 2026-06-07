@@ -25,10 +25,10 @@ local fileHandles = setmetatable({},{__mode = "k"})
 ---SHARED, OVERRIDE<br/>
 ---KStream wrapper for file.
 ---@class KFileReadStream : KReadStream
----@overload fun(path: string): KFileReadStream
+---@overload fun(path: string, location?: string): KFileReadStream
 KFileReadStream = setmetatable({},{
-    __call = function(_,path)
-        local fileStream = file.Open(path,"rb","DATA")
+    __call = function(_,path,location)
+        local fileStream = file.Open(path,"rb",location or "DATA")
 		if fileStream == nil then error("File does not exist or is locked!",2) end
 		fileHandles[fileStream] = path
 
