@@ -25,14 +25,15 @@ local STUDIO_DRAWTRANSLUCENTSUBMODELS = STUDIO_DRAWTRANSLUCENTSUBMODELS
 
 local emptyMatrix = Matrix()
 
-local kmr_DrawMesh
+local kmr_DrawMesh,kcm_Draw,errorModel
 hook.Add("KatLibsLoaded","KScene",function()
 	kmr_DrawMesh = KMeshUtils.DrawMesh
+	kcm_Draw = KClientsideModel.Draw
+	errorModel = KClientsideModel("models/error.mdl")
 end)
 
-local errorModel = KClientsideModel("models/error.mdl")
 local function renderError(flags)
-	errorModel:Draw(flags)
+	kcm_Draw(errorModel,flags)
 end
 
 local function splitSequentialTableByCount(tableToSplit,desiredCount)
