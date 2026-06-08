@@ -188,7 +188,7 @@ do --public static functions
 	---Reads a MeshVertex from a KReadStream.
 	---@param stream KReadStream
 	---@return MeshVertex
-	function KMeshUtils.ReadVertexFromBinaryStream(stream)
+	function KMeshUtils.ReadVertexFromStream(stream)
 		local meshVertex = {}
 		meshVertex.pos = stream:ReadVector()
 		meshVertex.u = stream:ReadDouble()
@@ -207,13 +207,13 @@ do --public static functions
 	end
 
 	local writeVertex = KMeshUtils.WriteVertexToStream
-	local readVertex = KMeshUtils.ReadVertexFromBinaryStream
+	local readVertex = KMeshUtils.ReadVertexFromStream
 
 	---Writes a KVisualPropertyGroup to a KWriteStream.
 	---@param stream KWriteStream
 	---@param visualPropertyGroup KVisualPropertyGroup
-	---@param threaded boolean?
-	function KMeshUtils.WriteVisualPropertyGroupToStream(stream,visualPropertyGroup,threaded)
+	---@param taskToken KTaskToken?
+	function KMeshUtils.WriteVisualPropertyGroupToStream(stream,visualPropertyGroup,taskToken)
 		stream:WriteColor(visualPropertyGroup.Color)
 		stream:WriteString(visualPropertyGroup.Material)
 		writeNullable(stream,stream.WriteUInt8,visualPropertyGroup.RenderGroup)
@@ -225,15 +225,15 @@ do --public static functions
 
 		for i = 1,numVertexes do
 			writeVertex(stream,vertexes[i])
-			if threaded then coroutine.yield() end
+			if taskToken then taskToken:YieldAndReportProgress(i / numVertexes) end
 		end
 	end
 
 	---Reads a KVisualPropertyGroup from a KReadtream.
 	---@param stream KReadStream
-	---@param threaded boolean?
+	---@param taskToken KTaskToken?
 	---@return KVisualPropertyGroup
-	function KMeshUtils.ReadVisualPropertyGroupFromStream(stream,threaded)
+	function KMeshUtils.ReadVisualPropertyGroupFromStream(stream,taskToken)
 		local visualPropertyGroup = {MeshVertexes = {}}
 
 		visualPropertyGroup.Color = stream:ReadColor()
@@ -246,7 +246,7 @@ do --public static functions
 
 		for i = 1,numVertexes do
 			vertexes[i] = readVertex(stream)
-			if threaded then coroutine.yield(i / numVertexes) end
+			if taskToken then taskToken:YieldAndReportProgress(i / numVertexes) end
 		end
 
 		return visualPropertyGroup

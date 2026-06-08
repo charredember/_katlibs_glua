@@ -5,6 +5,7 @@ KTimeUtils = {}
 local co_yield = coroutine.yield
 local co_running = coroutine.running
 local CurTime = CurTime
+local SysTime = SysTime
 local assert = assert
 
 local KError_ValidateArg = KError.ValidateArg
@@ -35,5 +36,23 @@ function KTimeUtils.TweenAsync(duration,func)
         end
 
         co_yield()
+    end
+end
+
+---SHARED, STATIC<br/>
+---Executes a function-wrapped coroutine until:
+--- - A specified quota is reached.
+--- - The coroutine returns a value that is not nil.
+---
+--- <br/>
+--- Forwards the result from the called coroutine when the coroutine finishes.
+---@param quota number
+---@param coroutineFunc function
+function KTimeUtils.RunWrappedCoroutineWithQuota(quota,coroutineFunc)
+    local savedTime = SysTime()
+    while true do
+        local result = coroutineFunc()
+        if result ~= nil then return result end
+        if (SysTime() - savedTime) > quota then return end
     end
 end
