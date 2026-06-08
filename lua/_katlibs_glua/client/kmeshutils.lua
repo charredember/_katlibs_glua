@@ -36,7 +36,7 @@ local util_IntersectRayWithPlane = util.IntersectRayWithPlane
 local t_insert = table.insert
 
 local kmd_GetPos,kmd_GetAngles,kmd_GetScale,kmd_GetModel,kmd_GetColor,kmd_GetMaterial,kmd_GetRenderGroup,kmd_GetRenderMode,kmd_GetClips
-hook.Add("KatLibsLoaded","KScene",function()
+hook.Add("KatLibsLoaded","KMeshUtils",function()
 	kmd_GetPos = KModelData.GetPos
 	kmd_GetAngles = KModelData.GetAngles
 	kmd_GetScale = KModelData.GetScale
