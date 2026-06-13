@@ -14,6 +14,8 @@ local function getBitsInNum(n)
     return ct
 end
 
+---@alias KNetEnumReceiveCallback fun(ply: Player)
+
 ---SHARED, STATIC<br/>
 ---Trades network efficiency for less NWString usage.<br/>
 ---Probably good for organizing net messages in use cases where net efficiency isn't a priority.<br/>
@@ -21,7 +23,7 @@ end
 ---the only moral action is the minimization of NW slots - sun tzu
 ---@param netstring string
 ---@return fun(messageEnum: number) netMsgStart
----@return fun(messageEnum: number, func: function) netMsgReceiver
+---@return fun(messageEnum: number, func: KNetEnumReceiveCallback) netMsgReceiver
 function KEnumNetMsg(netstring,enums)
     KError.ValidateArg("netstring",KVarConditions.StringNotEmpty(netstring))
     KError.ValidateArg("enums",KVarConditions.Table(enums))
