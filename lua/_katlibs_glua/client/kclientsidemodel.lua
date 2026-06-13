@@ -106,6 +106,7 @@ hook.Add("PreRender","KClientsideModel",function()
 		if IsValid(allocatedModel.ClientsideEntity) then continue end
 
 		local csm = ClientsideModel(allocatedModel.Model)
+		if not csm then continue end
 		csm:SetNoDraw(true)
 		allocatedModel.ClientsideEntity = csm
 	end
