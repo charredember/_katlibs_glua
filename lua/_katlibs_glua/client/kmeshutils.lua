@@ -15,12 +15,14 @@ local vm_SetTranslation = vm_meta.SetTranslation
 local vm_SetAngles = vm_meta.SetAngles
 local vm_Rotate = vm_meta.Rotate
 local vm_SetScale = vm_meta.SetScale
+local vm_Invert = vm_meta.Invert
 ---@class Color
 local clr_meta = FindMetaTable("Color")
 local clr_ToHex = clr_meta.ToHex
 ---@class Vector
 local v_meta = FindMetaTable("Vector")
 local v_Dot = v_meta.Dot
+local v_Distance = v_meta.Distance
 ---@class IMesh
 local im_meta = FindMetaTable("IMesh")
 ---function is only on dev branch, does not exist in documentation yet
@@ -31,6 +33,7 @@ local cam_GetModelMatrix = cam.GetModelMatrix
 local r_ModelMaterialOverride = render.ModelMaterialOverride
 local IsValid = IsValid
 local m_Round = math.Round
+local Lerp = Lerp
 local util_SHA256 = util.SHA256
 local util_IntersectRayWithPlane = util.IntersectRayWithPlane
 local t_insert = table.insert
@@ -53,7 +56,7 @@ local ENTITY_CLASS = "kat_meshrenderbase"
 
 local currMesh,currMaterial,currBoneTable
 local meshRenderEntitySingleton
-local sortTriangleToSide, appendTriangleData
+local sortTriangleToSide, appendModelData
 local writeNullable,readNullable,writeUserdata,readUserdata,writeWeights,readWeights
 
 ---@class KMeshUtils
@@ -159,10 +162,16 @@ do --public static functions
 				meshData[visualPropertyKey] = visualPropertyGroup
 			end
 
-			appendTriangleData(visualPropertyGroup.MeshVertexes,currModelData,boneIndex)
+			appendModelData(visualPropertyGroup.MeshVertexes,currModelData,boneIndex)
 		end
 
-		return table.ClearKeys(meshData)
+		local result = {}
+		for _,visualPropertyGroup in pairs(meshData) do
+			if #visualPropertyGroup.MeshVertexes <= 0 then continue end
+			table.insert(result,visualPropertyGroup)
+		end
+
+		return result
 	end
 
 	---Writes a MeshVertex to a KWriteStream.
@@ -272,8 +281,14 @@ do --helper functions: mesh splitting
 		local vectorBase2,uBase2,vBase2 = meshVertexBase2.pos,meshVertexBase2.u,meshVertexBase2.v
 		local vectorIntersection1 = util_IntersectRayWithPlane(vectorPoint,vectorBase1 - vectorPoint,planeOrigin,planeNormal)
 		local vectorIntersection2 = util_IntersectRayWithPlane(vectorPoint,vectorBase2 - vectorPoint,planeOrigin,planeNormal)
-		local uIntersection1,vIntersection1 = (uPoint + uBase1) / 2, (vPoint + vBase1) / 2
-		local uIntersection2,vIntersection2 = (uPoint + uBase2) / 2, (vPoint + vBase2) / 2
+
+		local distPointToIntersection1 = v_Distance(vectorPoint,vectorIntersection1) / v_Distance(vectorPoint,vectorBase1)
+		local distPointToIntersection2 = v_Distance(vectorPoint,vectorIntersection2) / v_Distance(vectorPoint,vectorBase2)
+
+		local uIntersection1 = Lerp(distPointToIntersection1,uPoint,uBase1)
+		local vIntersection1 = Lerp(distPointToIntersection1,vPoint,vBase1)
+		local uIntersection2 = Lerp(distPointToIntersection2,uPoint,uBase2)
+		local vIntersection2 = Lerp(distPointToIntersection2,vPoint,vBase2)
 
 		local meshVertexIntersection1 = { pos = vectorIntersection1, normal = normalPoint, binormal = binormalPoint, tangent = tangentPoint, u = uIntersection1, v = vIntersection1 }
 		local meshVertexIntersection2 = { pos = vectorIntersection2, normal = normalPoint, binormal = binormalPoint, tangent = tangentPoint, u = uIntersection2, v = vIntersection2 }
@@ -302,6 +317,7 @@ do --helper functions: mesh splitting
 			t_insert(splitA,meshVertex1)
 			t_insert(splitA,meshVertex2)
 			t_insert(splitA,meshVertex3)
+
 			return
 		end
 
@@ -309,6 +325,7 @@ do --helper functions: mesh splitting
 			t_insert(splitB,meshVertex1)
 			t_insert(splitB,meshVertex2)
 			t_insert(splitB,meshVertex3)
+
 			return
 		end
 
@@ -352,27 +369,71 @@ do -- helper functions: KModelData -> MeshVertex conversion
 
 	local normalMatrix = Matrix()
 	local modelMatrix = Matrix()
-	local ANG_FIX = Angle(0,90,0)
+	local clipMatrix = Matrix()
 	local splitMesh = KMeshUtils.SplitMesh
 
-	function appendTriangleData(triangles,modelData,boneIndex)
-		vm_Identity(normalMatrix)
-		vm_SetAngles(normalMatrix,kmd_GetAngles(modelData))
-		vm_Rotate(modelMatrix,ANG_FIX)
+	local function flipVector(staticProp,v)
+		if staticProp then return v end
+		v.x,v.y,v.z = -v.y,v.x,v.z
+		return v
+	end
 
-		modelMatrix:Set(normalMatrix)
-		vm_SetTranslation(modelMatrix,kmd_GetPos(modelData))
-		vm_SetScale(modelMatrix,kmd_GetScale(modelData))
+	local function getModelMeshesCorrectedForBones(modelPath)
+		local meshVertexes = {}
+		local modelMeshes,modelBindPoses = util.GetModelMeshes(modelPath)
+		local modelData = util.GetModelInfo(modelPath)
+		local staticProp = modelData.StaticProp
 
-		local modelPath = kmd_GetModel(modelData)
-		if not modelExists(modelPath) then
-			return
+		for _,modelMeshData in pairs(modelMeshes) do
+			for _,meshVertex in pairs(modelMeshData.triangles) do
+				local pos = Vector(meshVertex.pos)
+				local normal = Vector(meshVertex.normal)
+				local binormal = Vector(meshVertex.binormal)
+				local tangent = Vector(meshVertex.tangent)
+
+				table.insert(meshVertexes,{
+					pos = flipVector(staticProp,pos),
+					normal = flipVector(staticProp,normal),
+					binormal = binormal and flipVector(staticProp,binormal),
+					tangent = tangent and flipVector(staticProp,tangent),
+					userdata = meshVertex.userdata,
+					u = meshVertex.u,
+					v = meshVertex.v,
+					weights = meshVertex.weights,
+				})
+			end
 		end
 
-		local modelTriangles = util.GetModelMeshes(modelPath)[1].triangles
+		return meshVertexes
+	end
+
+	function appendModelData(meshVertexes,modelData,boneIndex)
+		local modelPos = kmd_GetPos(modelData)
+		local modelAngles = kmd_GetAngles(modelData)
+		local modelScale = kmd_GetScale(modelData)
+		local modelPath = kmd_GetModel(modelData)
+
+		vm_Identity(normalMatrix)
+		vm_SetAngles(normalMatrix,modelAngles)
+
+		vm_Identity(modelMatrix)
+		vm_SetTranslation(modelMatrix,modelPos)
+		vm_SetAngles(modelMatrix,modelAngles)
+		vm_SetScale(modelMatrix,modelScale)
+
+		vm_Identity(clipMatrix)
+		vm_SetScale(clipMatrix,modelScale)
+		vm_Invert(clipMatrix)
+
+		if not modelExists(modelPath) then return end
+
+		local modelTriangles = getModelMeshesCorrectedForBones(modelPath)
 
 		for _,clip in pairs(kmd_GetClips(modelData)) do
-			_,modelTriangles = splitMesh(modelTriangles,clip.Pos,clip.Normal)
+			local clipOrigin = clipMatrix * clip.Pos
+			local clipNormal = clip.Normal
+
+			_,modelTriangles = splitMesh(modelTriangles,clipOrigin,clipNormal)
 		end
 
 		for _,meshVertex in pairs(modelTriangles) do
@@ -381,7 +442,7 @@ do -- helper functions: KModelData -> MeshVertex conversion
 			local tangent = meshVertex.tangent and roundVector(normalMatrix * meshVertex.tangent)
 			local pos = roundVector(modelMatrix * meshVertex.pos)
 			local weights = boneIndex and {{bone = boneIndex, weight = 1}}
-			t_insert(triangles,{
+			t_insert(meshVertexes,{
 				pos = pos,
 				normal = normal,
 				binormal = binormal,

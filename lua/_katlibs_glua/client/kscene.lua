@@ -24,14 +24,30 @@ local STUDIO_RENDER = STUDIO_RENDER
 local STUDIO_DRAWTRANSLUCENTSUBMODELS = STUDIO_DRAWTRANSLUCENTSUBMODELS
 
 local emptyMatrix = Matrix()
+local maxVertsPerMesh = math.floor(MAX_TRIS_PER_MESH / 3)
 
 local kmr_DrawMesh
 hook.Add("KatLibsLoaded","KScene",function()
 	kmr_DrawMesh = KMeshUtils.DrawMesh
 end)
 
+local function destroy(priv)
+	local meshes = priv.Meshes
+	for i = 1,#meshes do
+		local mesh = meshes[i]
+		if not IsValid(mesh) then continue end
+		im_Destroy(mesh)
+	end
+
+	priv.Meshes = {}
+	priv.RenderOpaque = {}
+	priv.RenderBoth = {}
+	priv.RenderTransluscent = {}
+end
+
 local function splitSequentialTableByCount(tableToSplit,desiredCount)
-	if #tableToSplit < desiredCount then return {tableToSplit} end
+	if #tableToSplit <= desiredCount then return {tableToSplit} end
+
 	local result = {}
 	local currCount = #tableToSplit
 	local tablesNeeded = m_ceil(currCount / desiredCount)
@@ -40,7 +56,6 @@ local function splitSequentialTableByCount(tableToSplit,desiredCount)
 
 	for resultIndex = 1,tablesNeeded do
 		local subTable = {}
-
 		for newSubIndex = 1, desiredCount do
 			itr = itr + 1
 			local val = tableToSplit[itr]
@@ -69,17 +84,12 @@ KScene,getPriv = KClass(function(modelDataTable)
 		RenderBoth = {},
 		RenderTransluscent = {},
 	}
-end)
+end,{ Destructor = destroy })
 
 local getFactory = getPriv(KScene).GetFactory
 
 local jsonConstructor = getFactory(function(priv)
 	local boneIndexes = priv.BoneIndexes
-
-	local boneMatrices = {}
-	for _,boneIndex in pairs(boneIndexes) do
-		boneMatrices[boneIndex] = emptyMatrix
-	end
 
 	return {
 		MeshData = priv.MeshData,
@@ -89,7 +99,6 @@ local jsonConstructor = getFactory(function(priv)
 		RenderOpaque = {},
 		RenderBoth = {},
 		RenderTransluscent = {},
-		BoneMatrices = table.Count(boneIndexes) > 0 and boneMatrices or nil,
 	}
 end)
 
@@ -100,14 +109,12 @@ KScene.CreateWithBones = getFactory(function(kModelDataBoneGroups)
 	local kModelDataTable = {}
 	local modelBoneLookup = {}
 	local boneNameIndexLookup = {}
-	local boneMatrices = {}
 
 	local boneCount = 0
 	for boneName,group in pairs(kModelDataBoneGroups) do
 		KError.ValidateKVArg("kModelDataBoneGroups",KVarConditions.String(boneName),KVarConditions.Table(group))
 		boneCount = boneCount + 1
 		boneNameIndexLookup[boneName] = boneCount
-		boneMatrices[boneCount] = emptyMatrix
 
 		for k,modelData in pairs(group) do
 			KError.ValidateKVArg(
@@ -131,24 +138,12 @@ KScene.CreateWithBones = getFactory(function(kModelDataBoneGroups)
 		RenderOpaque = {},
 		RenderBoth = {},
 		RenderTransluscent = {},
-		BoneMatrices = boneMatrices,
 	}
 end)
 
 function KScene:Destroy()
-	local priv = getPriv(self)
-
-	local meshes = priv.Meshes
-	for i = 1,#meshes do
-		im_Destroy(meshes[i])
-	end
-
-	priv.Meshes = {}
-	priv.RenderOpaque = {}
-	priv.RenderBoth = {}
-	priv.RenderTransluscent = {}
+	destroy(getPriv(self))
 end
-local ksc_Destroy = KScene.Destroy
 
 local function buildRenderFunction(newMesh,material,colorRed,colorGreen,colorBlue,colorAlpha)
 	return function(boneData)
@@ -159,8 +154,8 @@ local function buildRenderFunction(newMesh,material,colorRed,colorGreen,colorBlu
 end
 
 function KScene:Compile()
-	ksc_Destroy(self)
 	local priv = getPriv(self)
+	destroy(priv)
 
 	local meshes = priv.Meshes
 	local renderOpaque = priv.RenderOpaque
@@ -185,7 +180,7 @@ function KScene:Compile()
 			(renderGroup == RENDERGROUP_OPAQUE) and renderOpaque or
 			renderBoth
 
-		for _,meshVertexes in pairs(splitSequentialTableByCount(visualPropertyGroup.MeshVertexes,MAX_TRIS_PER_MESH)) do
+		for _,meshVertexes in pairs(splitSequentialTableByCount(visualPropertyGroup.MeshVertexes,maxVertsPerMesh)) do
 			---parameter is only on dev branch, does not exist in documentation yet
 			---@diagnostic disable-next-line: redundant-parameter
 			local newMesh = Mesh(nil,2)
@@ -228,26 +223,17 @@ function KScene:Compile()
 	end
 end
 
----@param flags STUDIO?
-function KScene:Draw(flags)
+local function drawOpaque(priv,flags,boneMatrices)
 	if flags == STUDIO_DRAWTRANSLUCENTSUBMODELS then return end
-	local priv = getPriv(self)
-	local renderOpaque = priv.RenderOpaque
-	local boneMatrices = priv.BoneMatrices
 
+	local renderOpaque = priv.RenderOpaque
 	for i = 1,#renderOpaque do
 		renderOpaque[i](boneMatrices)
 	end
 end
-local ksc_Draw = KScene.Draw
 
----@param flags STUDIO?
-function KScene:DrawTranslucent(flags)
-	ksc_Draw(self,flags)
+local function drawTranslucent(priv,flags,boneMatrices)
 	if flags == STUDIO_RENDER then return end
-
-	local priv = getPriv(self)
-	local boneMatrices = priv.BoneMatrices
 
 	local renderBoth = priv.RenderBoth
 	for i = 1,#renderBoth do
@@ -260,14 +246,19 @@ function KScene:DrawTranslucent(flags)
 	end
 end
 
-function KScene:SetBoneMatrix(boneName,matrix)
+---@param flags STUDIO?
+function KScene:Draw(boneMatrices,flags)
 	local priv = getPriv(self)
-	local boneIndexes = priv.BoneIndexes
-	local index = boneIndexes[boneName]
-	if not index then return end
-	chat.AddText(tostring(index))
-	priv.BoneMatrices[index] = matrix
+
+	local boneMatricesByIndex = {}
+	for boneName,boneIndex in pairs(priv.BoneIndexes) do
+		boneMatricesByIndex[boneIndex] = boneMatrices[boneName] or emptyMatrix
+	end
+
+	drawOpaque(priv,flags,boneMatricesByIndex)
+	drawTranslucent(priv,flags,boneMatricesByIndex)
 end
+local ksc_Draw = KScene.Draw
 
 function KScene:GetBoneNames()
 	return table.GetKeys(getPriv(self).BoneIndexes)
@@ -335,5 +326,3 @@ function KScene.WriteToStream(stream,scene,taskToken)
 		stream:WriteUInt8(index)
 	end
 end
-
-hook.Run("KatLibsLoaded")
