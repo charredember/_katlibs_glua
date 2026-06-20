@@ -17,8 +17,8 @@ local KVarConditions_Function = KVarConditions.Function
 ---Blocks the current thread until the duration has finished.
 ---@async
 ---@param duration number
----@param func fun(up: number)
-function KTimeUtils.TweenAsync(duration,func)
+---@param func fun(up: number,...)
+function KTimeUtils.TweenAsync(duration,func,...)
     assert(co_running(),"TweenAsync called outside of coroutine!")
     KError_ValidateArg("duration",KVarConditions_NumberGreater(duration,0))
     KError_ValidateArg("func",KVarConditions_Function(func))
@@ -30,9 +30,9 @@ function KTimeUtils.TweenAsync(duration,func)
         DT = CurTime() - savedTime
 
         if DT <= duration then
-            func(DT / duration)
+            func(DT / duration,...)
         else
-            func(1)
+            func(1,...)
             break
         end
 
