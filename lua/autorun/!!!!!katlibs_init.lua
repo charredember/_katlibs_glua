@@ -3,14 +3,14 @@ local function includeSH(path)
     include(path)
 end
 
-includeSH("_katlibs_glua/universal/preload/kerror.lua")
-includeSH("_katlibs_glua/universal/preload/kclass.lua")
-includeSH("_katlibs_glua/universal/preload/kautoloader.lua")
+includeSH("katlibs/universal/preload/kerror.lua")
+includeSH("katlibs/universal/preload/kclass.lua")
+includeSH("katlibs/universal/preload/kautoloader.lua")
 
-KAutoLoader.IncludeDir("_katlibs_glua/universal",{Realm = "sh",Recursive = false})
-KAutoLoader.IncludeDir("_katlibs_glua/shared",{Realm = "sh",Recursive = false})
-KAutoLoader.IncludeDir("_katlibs_glua/server",{Realm = "sv",Recursive = false})
-KAutoLoader.IncludeDir("_katlibs_glua/client",{Realm = "cl",Recursive = false})
+KAutoLoader.IncludeDir("katlibs/universal",{Realm = "sh",Recursive = false})
+KAutoLoader.IncludeDir("katlibs/shared",{Realm = "sh",Recursive = false})
+KAutoLoader.IncludeDir("katlibs/server",{Realm = "sv",Recursive = false})
+KAutoLoader.IncludeDir("katlibs/client",{Realm = "cl",Recursive = false})
 
-MsgC(Color(255,0,0),"[katlibs_glua]",Color(255,255,255)," Initialized.")
+MsgC(Color(255,0,0),"[katlibs]",Color(255,255,255)," Initialized.")
 hook.Run("KatLibsLoaded")
