@@ -15,6 +15,7 @@ local KVarConditions_Function = KVarConditions.Function
 ---SHARED, STATIC<br/>
 ---A tween that runs inside a coroutine.<br/>
 ---Blocks the current thread until the duration has finished.
+---@async
 ---@param duration number
 ---@param func fun(up: number)
 function KTimeUtils.TweenAsync(duration,func)
