@@ -178,18 +178,16 @@ do --public static functions
 	---@param stream KWriteStream
 	---@param meshVertex MeshVertex
 	function KMeshUtils.WriteVertexToStream(stream,meshVertex)
-		local st = SysTime()
+		stream:WriteVectorF(meshVertex.pos)
+		stream:WriteFloat(meshVertex.u)
+		stream:WriteFloat(meshVertex.v)
+		stream:WriteVectorF(meshVertex.normal)
 
-		stream:WriteVector(meshVertex.pos)
-		stream:WriteDouble(meshVertex.u)
-		stream:WriteDouble(meshVertex.v)
-		stream:WriteVector(meshVertex.normal)
-
-		writeNullable(stream,stream.WriteVector,meshVertex.binormal)
-		writeNullable(stream,stream.WriteVector,meshVertex.tangent)
+		writeNullable(stream,stream.WriteVectorF,meshVertex.binormal)
+		writeNullable(stream,stream.WriteVectorF,meshVertex.tangent)
 		writeNullable(stream,stream.WriteColor,meshVertex.color)
-		writeNullable(stream,stream.WriteDouble,meshVertex.u1)
-		writeNullable(stream,stream.WriteDouble,meshVertex.v1)
+		writeNullable(stream,stream.WriteFloat,meshVertex.u1)
+		writeNullable(stream,stream.WriteFloat,meshVertex.v1)
 		writeNullable(stream,writeUserdata,meshVertex.userdata)
 		writeNullable(stream,writeWeights,meshVertex.weights)
 	end
@@ -199,16 +197,16 @@ do --public static functions
 	---@return MeshVertex
 	function KMeshUtils.ReadVertexFromStream(stream)
 		local meshVertex = {}
-		meshVertex.pos = stream:ReadVector()
-		meshVertex.u = stream:ReadDouble()
-		meshVertex.v = stream:ReadDouble()
-		meshVertex.normal = stream:ReadVector()
+		meshVertex.pos = stream:ReadVectorF()
+		meshVertex.u = stream:ReadFloat()
+		meshVertex.v = stream:ReadFloat()
+		meshVertex.normal = stream:ReadVectorF()
 
-		meshVertex.binormal = readNullable(stream,stream.ReadVector)
-		meshVertex.tangent = readNullable(stream,stream.ReadVector)
+		meshVertex.binormal = readNullable(stream,stream.ReadVectorF)
+		meshVertex.tangent = readNullable(stream,stream.ReadVectorF)
 		meshVertex.color = readNullable(stream,stream.ReadColor)
-		meshVertex.u1 = readNullable(stream,stream.ReadDouble)
-		meshVertex.v1 = readNullable(stream,stream.ReadDouble)
+		meshVertex.u1 = readNullable(stream,stream.ReadFloat)
+		meshVertex.v1 = readNullable(stream,stream.ReadFloat)
 		meshVertex.userdata = readNullable(stream,readUserdata)
 		meshVertex.weights = readNullable(stream,readWeights)
 
@@ -525,19 +523,19 @@ do --helper functions: read and write meshvertex structures to KBinaryStream
 
 	---@param stream KWriteStream
 	function writeUserdata(stream,userdata)
-		stream:WriteDouble(userdata[1])
-		stream:WriteDouble(userdata[2])
-		stream:WriteDouble(userdata[3])
-		stream:WriteDouble(userdata[4])
+		stream:WriteFloat(userdata[1])
+		stream:WriteFloat(userdata[2])
+		stream:WriteFloat(userdata[3])
+		stream:WriteFloat(userdata[4])
 	end
 
 	---@param stream KReadStream
 	function readUserdata(stream)
 		local userdata = {}
-		userdata[1] = stream:ReadDouble()
-		userdata[2] = stream:ReadDouble()
-		userdata[3] = stream:ReadDouble()
-		userdata[4] = stream:ReadDouble()
+		userdata[1] = stream:ReadFloat()
+		userdata[2] = stream:ReadFloat()
+		userdata[3] = stream:ReadFloat()
+		userdata[4] = stream:ReadFloat()
 		return userdata
 	end
 
@@ -551,7 +549,7 @@ do --helper functions: read and write meshvertex structures to KBinaryStream
 			local weight = weights[i]
 
 			stream:WriteUInt8(weight.bone)
-			stream:WriteDouble(weight.weight)
+			stream:WriteFloat(weight.weight)
 		end
 	end
 
@@ -563,7 +561,7 @@ do --helper functions: read and write meshvertex structures to KBinaryStream
 		local totalWeight = 0
 		for i = 1,numWeights do
 			local bone = stream:ReadUInt8()
-			local weight = stream:ReadDouble()
+			local weight = stream:ReadFloat()
 			totalWeight = totalWeight + weight
 
 			weights[i] = {

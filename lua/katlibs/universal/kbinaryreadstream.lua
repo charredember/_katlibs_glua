@@ -161,6 +161,34 @@ do --read/write
 	end
 
 	---SHARED, OVERRIDE<br/>
+	---Reads a 32-bit IEEE754 double from the byte stream.
+    function KBinaryReadStream:ReadFloat()
+        local a = readUInt32(self)
+
+        local sign = math_floor(a / (2 ^ 31)) % 2 == 1 and -1 or 1
+        local exponentField = math_floor(a / (2 ^ 23)) % (2 ^ 8)
+        local mantissa = a % (2 ^ 23)
+
+        if exponentField == 0xFF then
+            if mantissa == 0 then return sign * (1 / 0) end
+            return 0 / 0
+        end
+
+        if exponentField == 0 and mantissa == 0 then
+            return sign * 0
+        end
+
+        local mantissaScaled = mantissa / (2 ^ 23)
+        if exponentField ~= 0 then
+            mantissaScaled = mantissaScaled + 1
+            local actualExponent = exponentField - 127
+            return sign * math_ldexp(mantissaScaled, actualExponent)
+        else
+            return sign * math_ldexp(mantissaScaled, -126)
+        end
+    end
+
+	---SHARED, OVERRIDE<br/>
 	---Reads a 64-bit IEEE754 double from the byte stream.
 	function KBinaryReadStream:ReadDouble()
         local a = readUInt32(self)
@@ -192,6 +220,7 @@ do --read/write
         end
 	end
 
+	local readFloat = KBinaryReadStream.ReadFloat
 	local readDouble = KBinaryReadStream.ReadDouble
 
 	---SHARED, OVERRIDE<br/>
@@ -208,12 +237,21 @@ do --read/write
 	end
 
 	---SHARED, OVERRIDE<br/>
-	---Reads a Vector from the byte stream.
+	---Reads a Vector of 64-bit doubles from the byte stream.
 	function KBinaryReadStream:ReadVector()
 		return Vector(
 			readDouble(self),
 			readDouble(self),
 			readDouble(self))
+	end
+
+	---SHARED, OVERRIDE<br/>
+	---Reads a Vector of 32-bit floats from the byte stream.
+	function KBinaryReadStream:ReadVectorF()
+		return Vector(
+			readFloat(self),
+			readFloat(self),
+			readFloat(self))
 	end
 
 	---SHARED, OVERRIDE<br/>

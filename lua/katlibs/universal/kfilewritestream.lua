@@ -10,6 +10,7 @@ local f_WriteULong = file_meta.WriteULong
 local f_WriteShort = file_meta.WriteShort
 local f_WriteLong = file_meta.WriteLong
 local f_WriteDouble = file_meta.WriteDouble
+local f_WriteFloat = file_meta.WriteFloat
 local f_WriteBool = file_meta.WriteBool
 
 local math_huge = math.huge
@@ -107,6 +108,13 @@ do --read/write
 
 	---SHARED, OVERRIDE<br/>
 	---Reads a 64-bit IEEE754 double from the byte stream.
+	---@param float number
+	function KFileWriteStream:WriteFloat(float)
+		f_WriteFloat(self,float)
+	end
+
+	---SHARED, OVERRIDE<br/>
+	---Reads a 64-bit IEEE754 double from the byte stream.
 	---@param double number
 	function KFileWriteStream:WriteDouble(double)
 		f_WriteDouble(self,double)
@@ -127,12 +135,21 @@ do --read/write
 	end
 
 	---SHARED, OVERRIDE<br/>
-	---Writes a Vector to the byte stream.
+	---Writes a Vector to the byte stream using 64-bit doubles.
 	---@param vec Vector
 	function KFileWriteStream:WriteVector(vec)
 		f_WriteDouble(self,vec.x)
 		f_WriteDouble(self,vec.y)
 		f_WriteDouble(self,vec.z)
+	end
+
+	---SHARED, OVERRIDE<br/>
+	---Writes a Vector to the byte stream using 32-bit floats.
+	---@param vec Vector
+	function KFileWriteStream:WriteVectorF(vec)
+		f_WriteFloat(self,vec.x)
+		f_WriteFloat(self,vec.y)
+		f_WriteFloat(self,vec.z)
 	end
 
 	---SHARED, OVERRIDE<br/>

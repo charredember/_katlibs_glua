@@ -14,6 +14,7 @@ local f_ReadULong = file_meta.ReadULong
 local f_ReadShort = file_meta.ReadShort
 local f_ReadLong = file_meta.ReadLong
 local f_ReadDouble = file_meta.ReadDouble
+local f_ReadFloat = file_meta.ReadFloat
 local f_ReadLine = file_meta.ReadLine
 local f_ReadBool = file_meta.ReadBool
 
@@ -152,6 +153,12 @@ do --read/write
 	end
 
 	---SHARED, OVERRIDE<br/>
+	---Writes a 32-bit IEEE754 float to the byte stream.
+	function KFileReadStream:ReadFloat()
+		return f_ReadFloat(self)
+	end
+
+	---SHARED, OVERRIDE<br/>
 	---Writes a 64-bit IEEE754 double to the byte stream.
 	function KFileReadStream:ReadDouble()
 		return f_ReadDouble(self)
@@ -171,12 +178,21 @@ do --read/write
 	end
 
 	---SHARED, OVERRIDE<br/>
-	---Reads a Vector from the byte stream.
+	---Reads a Vector of 64-bit doubles from the byte stream.
 	function KFileReadStream:ReadVector()
 		return Vector(
 			f_ReadDouble(self),
 			f_ReadDouble(self),
 			f_ReadDouble(self))
+	end
+
+	---SHARED, OVERRIDE<br/>
+	---Reads a Vector of 32-bit floats from the byte stream.
+	function KFileReadStream:ReadVectorF()
+		return Vector(
+			f_ReadFloat(self),
+			f_ReadFloat(self),
+			f_ReadFloat(self))
 	end
 
 	---SHARED, OVERRIDE<br/>

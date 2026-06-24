@@ -15,7 +15,7 @@ for i = 0, 255 do
 	byteToChar[i] = string_char(i)
 end
 
-local write,writeUInt8,writeUInt16,writeUInt32,writeIEEE754Double
+local write,writeUInt8,writeUInt16,writeUInt32,writeIEEE754Float,writeIEEE754Double
 
 local getPriv
 ---SHARED<br/>
@@ -99,6 +99,13 @@ do --read/write
 	end
 
 	---SHARED, OVERRIDE<br/>
+	---Reads a 32-bit IEEE754 float from the byte stream.
+	---@param float number
+	function KBinaryWriteStream:WriteFloat(float)
+		writeIEEE754Float(getPriv(self),float)
+	end
+
+	---SHARED, OVERRIDE<br/>
 	---Reads a 64-bit IEEE754 double from the byte stream.
 	---@param double number
 	function KBinaryWriteStream:WriteDouble(double)
@@ -120,13 +127,23 @@ do --read/write
 	end
 
 	---SHARED, OVERRIDE<br/>
-	---Writes a Vector to the byte stream.
+	---Writes a Vector to the byte stream using 64-bit doubles.
 	---@param vec Vector
 	function KBinaryWriteStream:WriteVector(vec)
 		local priv = getPriv(self)
 		writeIEEE754Double(priv,vec.x)
 		writeIEEE754Double(priv,vec.y)
 		writeIEEE754Double(priv,vec.z)
+	end
+
+	---SHARED, OVERRIDE<br/>
+	---Writes a Vector to the byte stream using 32-bit floats.
+	---@param vec Vector
+	function KBinaryWriteStream:WriteVectorF(vec)
+		local priv = getPriv(self)
+		writeIEEE754Float(priv,vec.x)
+		writeIEEE754Float(priv,vec.y)
+		writeIEEE754Float(priv,vec.z)
 	end
 
 	---SHARED, OVERRIDE<br/>
@@ -160,6 +177,46 @@ do --helper functions
         writeUInt16(priv,math_floor(val / 0x10000))
         writeUInt16(priv,val % 0x10000)
     end
+
+	function writeIEEE754Float(priv,number)
+        local a = 0
+
+        if number == 0 then
+            a = 0x00000000
+            if 1 / number < 0 then a = 0x80000000 end
+            return writeUInt32(priv,a)
+        elseif number ~= number then
+            a = 0x7FFFFFFF
+            return writeUInt32(priv,a)
+        end
+
+        local sign = number < 0 and 1 or 0
+        number = sign == 1 and -number or number
+
+        if number == 1 / 0 then
+            a = (sign * (2 ^ 31)) + (0xFF * (2 ^ 23))
+            return writeUInt32(priv, a)
+        end
+
+        local mantissa, exponent = math_frexp(number)
+        mantissa = mantissa * 2
+        exponent = exponent - 1
+
+        local ieeeExponent = exponent + 127 -- IEEE 754 bias
+        if ieeeExponent <= 0 then
+            mantissa = math_ldexp(mantissa, ieeeExponent - 1)
+            ieeeExponent = 0
+        elseif ieeeExponent >= 255 then
+            ieeeExponent = 255
+            mantissa = 0
+        end
+
+        local mantissaBits = math_floor(((mantissa - 1) * (2 ^ 23)) + 0.5)
+        mantissaBits = mantissaBits % (2 ^ 23)
+        u32 = (sign * (2 ^ 31)) + (ieeeExponent * (2 ^ 23)) + mantissaBits
+
+        return writeUInt32(priv,u32)
+	end
 
 	function writeIEEE754Double(priv,number)
 		--sign|exponent|mantissa

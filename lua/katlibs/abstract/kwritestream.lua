@@ -52,6 +52,11 @@ do --read/write
 	function KWriteStream:WriteInt32(int) end
 
 	---SHARED, ABSTRACT<br/>
+	---Reads a 32-bit IEEE754 float from the byte stream.
+	---@param float number
+	function KWriteStream:WriteFloat(float) end
+
+	---SHARED, ABSTRACT<br/>
 	---Reads a 64-bit IEEE754 double from the byte stream.
 	---@param double number
 	function KWriteStream:WriteDouble(double) end
@@ -67,9 +72,14 @@ do --read/write
 	function KWriteStream:WriteBool(bool) end
 
 	---SHARED, ABSTRACT<br/>
-	---Writes a Vector to the byte stream.
+	---Writes a Vector to the byte stream using 64-bit doubles.
 	---@param vec Vector
 	function KWriteStream:WriteVector(vec) end
+
+	---SHARED, ABSTRACT<br/>
+	---Writes a Vector to the byte stream using 32-bit floats.
+	---@param vec Vector
+	function KWriteStream:WriteVectorF(vec) end
 
 	---SHARED, ABSTRACT<br/>
 	---Writes a Color to the byte stream.

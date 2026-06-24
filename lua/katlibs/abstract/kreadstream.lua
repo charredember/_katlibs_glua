@@ -80,6 +80,11 @@ do --read/write
 	function KReadStream:ReadInt32() end
 
 	---SHARED, ABSTRACT<br/>
+	---Reads a 32-bit IEEE754 float from the byte stream.
+	---@return number
+	function KReadStream:ReadFloat() end
+
+	---SHARED, ABSTRACT<br/>
 	---Reads a 64-bit IEEE754 double from the byte stream.
 	---@return number
 	function KReadStream:ReadDouble() end
@@ -95,9 +100,14 @@ do --read/write
 	function KReadStream:ReadBool() end
 
 	---SHARED, ABSTRACT<br/>
-	---Reads a Vector from the byte stream.
+	---Reads a Vector of 64-bit doubles from the byte stream.
 	---@return Vector
 	function KReadStream:ReadVector() end
+
+	---SHARED, ABSTRACT<br/>
+	---Reads a Vector of 32-bit floats from the byte stream.
+	---@return Vector
+	function KReadStream:ReadVectorF() end
 
 	---SHARED, ABSTRACT<br/>
 	---Reads a Color from the byte stream.
