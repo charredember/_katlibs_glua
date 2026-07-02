@@ -54,8 +54,8 @@ do --constructors
 
     ---SHARED, STATIC<br/>
     ---Creates a new KQuaternion from a scalar angle and a unit vector.
-    ---@param v Vector
     ---@param a Angle
+    ---@param v Vector
     ---@return KQuaternion
     function KQuaternion.FromAxisAngle(a,v)
         local new = KQuaternion(0,0,0,0)
@@ -149,7 +149,7 @@ do --set/get
         )
         vm_SetUnpacked(m,
             1 - 2*j*j - 2*k*k,	2*i*j - 2*k*r,		2*i*k + 2*j*r,		m14,
-            2*i*j + 2*k*r,		1 - 2*i*j - 2*k*k,	2*j*k - 2*i*r,		m24,
+            2*i*j + 2*k*r,		1 - 2*i*i - 2*k*k,	2*j*k - 2*i*r,		m24,
             2*i*k - 2*j*r,		2*j*k + 2*i*r,		1 - 2*i*i - 2*j*j,	m34,
             0,				    0,				    0,				    1
         )
@@ -191,7 +191,7 @@ do --set/get
         end
 
         local siny_cosp = 2.0 * (r * k + i * j)
-        local cosy_cosp = 1.0 - 2.0 * (i * i + j * j)
+        local cosy_cosp = 1.0 - 2.0 * (j * j + k * k)
         yaw = m_deg(m_atan2(siny_cosp, cosy_cosp))
 
         local sinr_cosp = 2.0 * (r * i + j * k)
@@ -488,9 +488,9 @@ do --helper functions
     function divideByNumber(priv,num)
         return KQuaternion(
             priv[R] / num,
-            -priv[I] / num,
-            -priv[J] / num,
-            -priv[K] / num
+            priv[I] / num,
+            priv[J] / num,
+            priv[K] / num
         )
     end
 
@@ -511,11 +511,13 @@ do --helper functions
         local r2,i2,j2,k2 = q_unpack(privQ2)
         local lenSqr = r2 * r2 + i2 * i2 + j2 * j2 + k2 * k2
 
+        local cr2,ci2,cj2,ck2 = r2,-i2,-j2,-k2
+
         return KQuaternion(
-            (r1 * r2 - i1 * i2 - j1 * j2 - k1 * k2) / lenSqr,
-            (i1 * r2 + r1 * i2 + j1 * k2 - k1 * j2) / -lenSqr,
-            (r1 * j2 - i1 * k2 + j1 * r2 + k1 * i2) / -lenSqr,
-            (r1 * k2 + i1 * j2 - j1 * i2 + k1 * r2) / -lenSqr
+            (r1 * cr2 - i1 * ci2 - j1 * cj2 - k1 * ck2) / lenSqr,
+            (i1 * cr2 + r1 * ci2 + j1 * ck2 - k1 * cj2) / lenSqr,
+            (r1 * cj2 - i1 * ck2 + j1 * cr2 + k1 * ci2) / lenSqr,
+            (r1 * ck2 + i1 * cj2 - j1 * ci2 + k1 * cr2) / lenSqr
         )
     end
 
