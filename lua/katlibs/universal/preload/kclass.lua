@@ -64,7 +64,6 @@ local destructors = setmetatable({},{__mode = "k"})
 local function addDestructorToTable(tab,destructor,paramsTab)
 	local userData = newproxy(true)
 	destructors[tab] = userData
-	getmetatable(tab).destructorUserData = userData
 	getmetatable(userData).__gc = function()
 		ProtectedCall(destructor,paramsTab)
 	end
@@ -73,10 +72,12 @@ end
 local function createObjectFactory(classInternals,constructor)
 	local populateObjectPriv = classInternals.PopulateObjectPriv
 	local destructor = classInternals.Destructor
+	local objectMetatable = classInternals.ObjectMetatable
+	objectMetatable.__index = classInternals.Class
 
 	if destructor then
 		return function(...)
-			local object = setmetatable({},{__index = classInternals.Class})
+			local object = setmetatable({},objectMetatable)
 			currObj = object
 			local priv = populateObjectPriv(object,constructor,...)
 			currObj = nil
@@ -86,7 +87,7 @@ local function createObjectFactory(classInternals,constructor)
 	end
 
 	return function(...)
-		local object = setmetatable({},{__index = classInternals.Class})
+		local object = setmetatable({},objectMetatable)
 		currObj = object
 		populateObjectPriv(object,constructor,...)
 		currObj = nil
@@ -126,6 +127,7 @@ KClass = setmetatable({},{
 		KError.ValidateNullableArg("params.Abstract",KVarConditions.Bool(params.Abstract))
 		assert(params.InheritedClass == nil or classInternalsLookup[params.InheritedClass] ~= nil,"params.InheritedClass is not a KClass!")
 
+		local objectMetatable = {}
 		local classMetatable = {}
 		local class = setmetatable({},classMetatable)
 		local classPrivDirectory = setmetatable({},{__mode = "k"})
@@ -137,6 +139,7 @@ KClass = setmetatable({},{
 			InheritedClass = params.InheritedClass,
 			Destructor = params.Destructor,
 			Abstract = params.Abstract,
+			ObjectMetatable = objectMetatable,
 			--PopulateObjectPriv
 		}
 		classInternalsLookup[class] = classInternals
@@ -146,6 +149,8 @@ KClass = setmetatable({},{
 
 		classPrivDirectory[class] = {
 			GetFactory = function(constructor) return createObjectFactory(classInternals,constructor) end,
+			Instantiate = createObjectFactory(classInternals,function(priv) return priv end),
+			GetObjectMeta = function() return objectMetatable end
 		}
 
 		local function getPriv(obj)
