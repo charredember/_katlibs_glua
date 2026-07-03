@@ -415,6 +415,14 @@ do --special operations
         priv[K] = 0
     end
 
+    ---SHARED<br/>
+    ---Rotates a passed vector by the rotation of this quaternion.<br/>
+    ---GARBAGE EFFICIENT: Does not allocate any new objects.
+    ---@param v Vector
+    function KQuaternion:RotateVector(v)
+        multiplyByVector(v,getPriv(self),v)
+    end
+
     ---SHARED, STATIC<br/>
     ---Performs spherical interpolation between to two other quaternions and stores it in the first argument.<br/>
     ---GARBAGE EFFICIENT: Does not allocate any new objects.
@@ -470,7 +478,6 @@ do --metafunctions
     ---@class KQuaternion
     ---@operator mul(KQuaternion): KQuaternion
     ---@operator mul(number): KQuaternion
-    ---@operator mul(Vector): Vector
     ---@operator div(KQuaternion): KQuaternion
     ---@operator div(number): KQuaternion
     ---@operator add(KQuaternion): KQuaternion
@@ -480,13 +487,6 @@ do --metafunctions
     ---@operator unm:KQuaternion
 
     meta.__mul = function(q1n, q2nv)
-        local q2nvType = type(q2nv)
-        if q2nvType == "Vector" then
-            local new = Vector()
-            multiplyByVector(new,getPriv(q1n),q2nv)
-            return new
-        end
-
         local new = KQuaternion(0,0,0,0)
         local privNew = getPriv(new)
 
@@ -498,7 +498,7 @@ do --metafunctions
                 return new
             end
 
-            if q2nvType == "number" then
+            if type(q2nv) == "number" then
                 multiplyByNumber(privNew,privQ1,q2nv)
                 return new
             end
