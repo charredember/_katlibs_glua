@@ -27,6 +27,7 @@ local m_abs = math.abs
 local m_max = math.max
 local m_pi = math.pi
 local s_format = string.format
+local select = select
 local type = type
 local is = KClass.Is
 
@@ -85,6 +86,13 @@ do --constructors
         return new
     end
 
+    ---SHARED, STATIC<br/>
+    ---Creates a new Identity KQuaternion.
+    ---@return KQuaternion
+    function KQuaternion.FromIdentity()
+        return KQuaternion(1,0,0,0)
+    end
+
     ---SHARED<br/>
     ---Creates a new KQuaternion from an existing KQuaternion.
     ---@return KQuaternion
@@ -95,7 +103,8 @@ end
 
 do --set/get
     ---SHARED<br/>
-    ---Gets the scalar angle and unit vector axis of the quaternion.
+    ---Gets the scalar angle and unit vector axis of the quaternion.<br/>
+    ---GARBAGE EFFICIENT: Does not create any new objects if an object is passed in.
     ---@param v? Vector An optional Vector to pass in to populate instead of creating a new Vector.
     ---@return number,Vector
     function KQuaternion:GetAxisAngle(v)
@@ -138,7 +147,8 @@ do --set/get
 
     local scale = Vector()
     ---SHARED<br/>
-    ---Gets the matrix representation of the quaternion.
+    ---Gets the matrix representation of the quaternion.<br/>
+    ---GARBAGE EFFICIENT: Does not create any new objects if an object is passed in.
     ---@param m? VMatrix An optional VMatrix to pass in to populate instead of creating a new VMatrix. Only changes rotation, keeps translation and scale.
     ---@return VMatrix
     function KQuaternion:GetMatrix(m)
@@ -179,7 +189,8 @@ do --set/get
     end
 
     ---SHARED<br/>
-    ---Gets the euler angle representation of the quaternion.
+    ---Gets the euler angle representation of the quaternion.<br/>
+    ---GARBAGE EFFICIENT: Does not create any new objects if an object is passed in.
     ---@param ang? Angle An optional Angle to pass in to populate instead of creating a new Angle.
     ---@return Angle
     function KQuaternion:GetEulerAngle(ang)
@@ -327,7 +338,7 @@ end
 do --special operations
     ---SHARED<br/>
     ---Conjugates the quaternion.<br/>
-    ---Self-Modifies. Does not return anything.
+    ---GARBAGE EFFICIENT: Self modifies. Does not allocate any new objects.
     function KQuaternion:Conjugate()
         local priv = getPriv(self)
 
@@ -346,7 +357,7 @@ do --special operations
 
     ---SHARED<br/>
     ---Normalizes the quaternion.<br/>
-    ---Self-Modifies. Does not return anything.
+    ---GARBAGE EFFICIENT: Self modifies. Does not allocate any new objects.
     function KQuaternion:Normalize()
         local priv = getPriv(self)
 
@@ -369,7 +380,7 @@ do --special operations
 
     ---SHARED<br/>
     ---Inverts the quaternion.<br/>
-    ---Self-Modifies. Does not return anything.
+    ---GARBAGE EFFICIENT: Self modifies. Does not allocate any new objects.
     function KQuaternion:Invert()
         local priv = getPriv(self)
         local r,i,j,k = q_unpack(priv)
@@ -392,11 +403,23 @@ do --special operations
         return q
     end
 
-    ---SHARED, STATIC<br/>
-    ---Performs spherical interpolation on this quaternion relative to two other quaternions.<br/>
-    ---Self-Modifies. Does not return anything.
-    function KQuaternion:SLerp(t,q1,q2)
+    ---SHARED<br/>
+    ---Resets the quaternion to the quaternion identity value.<br/>
+    ---GARBAGE EFFICIENT: Self modifies. Does not allocate any new objects.
+    function KQuaternion:Identity()
         local priv = getPriv(self)
+
+        priv[R] = 1
+        priv[I] = 0
+        priv[J] = 0
+        priv[K] = 0
+    end
+
+    ---SHARED, STATIC<br/>
+    ---Performs spherical interpolation between to two other quaternions and stores it in the first argument.<br/>
+    ---GARBAGE EFFICIENT: Does not allocate any new objects.
+    function KQuaternion.SLerp(qResult,t,q1,q2)
+        local priv = getPriv(qResult)
         local r1,i1,j1,k1 = q_unpack(getPriv(q1))
         local r2,i2,j2,k2 = q_unpack(getPriv(q2))
 
@@ -420,6 +443,25 @@ do --special operations
             priv[K] = k1 * ratioA + k2 * ratioB
         end
     end
+
+    ---SHARED, STATIC<br/>
+    ---Multiplies passed quaternions from right to left and stores the result in the first argument.<br/>
+    ---GARBAGE EFFICIENT: Does not allocate any new objects.
+    ---@param qResult KQuaternion
+    ---@param ... KQuaternion
+    function KQuaternion.Multiply(qResult,...)
+        local privResult = getPriv(qResult)
+
+        privResult[R] = 1
+        privResult[I] = 0
+        privResult[J] = 0
+        privResult[K] = 0
+
+        for i = select("#",...), 1, -1 do
+            local q = select(i,...)
+            multiplyByQuat(privResult,getPriv(q),privResult)
+        end
+    end
 end
 
 do --metafunctions
@@ -438,29 +480,60 @@ do --metafunctions
     ---@operator unm:KQuaternion
 
     meta.__mul = function(q1n, q2nv)
+        local q2nvType = type(q2nv)
+        if q2nvType == "Vector" then
+            local new = Vector()
+            multiplyByVector(new,getPriv(q1n),q2nv)
+            return new
+        end
+
+        local new = KQuaternion(0,0,0,0)
+        local privNew = getPriv(new)
+
         if is(q1n,KQuaternion) then
             local privQ1 = getPriv(q1n)
 
-            if is(q2nv,KQuaternion) then return multiplyByQuat(privQ1,getPriv(q2nv)) end
+            if is(q2nv,KQuaternion) then
+                multiplyByQuat(privNew,privQ1,getPriv(q2nv))
+                return new
+            end
 
-            local q2nvType = type(q2nv)
-            if q2nvType == "Vector" then return multiplyByVector(privQ1,q2nv) end
-            if q2nvType == "number" then return multiplyByNumber(privQ1,q2nv) end
+            if q2nvType == "number" then
+                multiplyByNumber(privNew,privQ1,q2nv)
+                return new
+            end
         end
 
-        if type(q1n) == "number" and is(q2nv,KQuaternion) then return multiplyByNumber(getPriv(q2nv),q1n) end
+        if type(q1n) == "number" and is(q2nv,KQuaternion) then
+            multiplyByNumber(privNew,getPriv(q2nv),q1n)
+            return new
+        end
 
         error("Type not supported by this operation!",2)
     end
 
     meta.__div = function(q1n, q2nv)
+        local new = KQuaternion(0,0,0,0)
+        local privNew = getPriv(new)
+
         if is(q1n,KQuaternion) then
             local privQ1 = getPriv(q1n)
-            if is(q2nv,KQuaternion) then return divideByQuat(privQ1,getPriv(q2nv)) end
-            if type(q2nv) == "number" then return divideByNumber(privQ1,q2nv) end
+
+            if is(q2nv,KQuaternion) then
+                divideByQuat(privNew,privQ1,getPriv(q2nv))
+                return new
+            end
+
+            if type(q2nv) == "number" then
+                divideByNumber(privNew,privQ1,q2nv)
+                return new
+            end
         end
 
-        if type(q1n) == "number" and is(q2nv,KQuaternion) then return inverseDividedByNumber(getPriv(q2nv),q1n) end
+        if type(q1n) == "number" and is(q2nv,KQuaternion) then
+            inverseDividedByNumber(privNew,getPriv(q2nv),q1n)
+            return new
+        end
 
         error("Type not supported by this operation!",2)
     end
@@ -498,25 +571,21 @@ do --metafunctions
 end
 
 do --helper functions
-    function multiplyByNumber(priv,num)
-        return KQuaternion(
-            priv[R] * num,
-            priv[I] * num,
-            priv[J] * num,
-            priv[K] * num
-        )
+    function multiplyByNumber(privResult,priv,num)
+        privResult[R] = priv[R] * num
+        privResult[I] = priv[I] * num
+        privResult[J] = priv[J] * num
+        privResult[K] = priv[K] * num
     end
 
-    function divideByNumber(priv,num)
-        return KQuaternion(
-            priv[R] / num,
-            priv[I] / num,
-            priv[J] / num,
-            priv[K] / num
-        )
+    function divideByNumber(privResult,priv,num)
+        privResult[R] = priv[R] / num
+        privResult[I] = priv[I] / num
+        privResult[J] = priv[J] / num
+        privResult[K] = priv[K] / num
     end
 
-    function inverseDividedByNumber(priv,num)
+    function inverseDividedByNumber(privResult,priv,num)
         local r,i,j,k = q_unpack(priv)
         local lenSqr = r * r + i * i + j * j + k * k
 
@@ -526,45 +595,38 @@ do --helper functions
         end
 
         local n = lenSqr / num
-        return KQuaternion(
-            r / n,
-            -i / n,
-            -j / n,
-            -k / n
-        )
+
+        privResult[R] =  r / n
+        privResult[I] = -i / n
+        privResult[J] = -j / n
+        privResult[K] = -k / n
     end
 
-    function multiplyByQuat(privQ1,privQ2)
+    function multiplyByQuat(privResult,privQ1,privQ2)
         local r1,i1,j1,k1 = q_unpack(privQ1)
         local r2,i2,j2,k2 = q_unpack(privQ2)
 
-        return KQuaternion(
-            r1 * r2 - i1 * i2 - j1 * j2 - k1 * k2,
-            i1 * r2 + r1 * i2 + j1 * k2 - k1 * j2,
-            r1 * j2 - i1 * k2 + j1 * r2 + k1 * i2,
-            r1 * k2 + i1 * j2 - j1 * i2 + k1 * r2
-        )
+        privResult[R] =  r1 * r2 - i1 * i2 - j1 * j2 - k1 * k2
+        privResult[I] =  i1 * r2 + r1 * i2 + j1 * k2 - k1 * j2
+        privResult[J] =  r1 * j2 - i1 * k2 + j1 * r2 + k1 * i2
+        privResult[K] =  r1 * k2 + i1 * j2 - j1 * i2 + k1 * r2
     end
 
-    function divideByQuat(privQ1,privQ2)
+    function divideByQuat(privResult,privQ1,privQ2)
         local r1,i1,j1,k1 = q_unpack(privQ1)
         local r2,i2,j2,k2 = q_unpack(privQ2)
         local lenSqr = r2 * r2 + i2 * i2 + j2 * j2 + k2 * k2
 
         local cr2,ci2,cj2,ck2 = r2,-i2,-j2,-k2
 
-        return KQuaternion(
-            (r1 * cr2 - i1 * ci2 - j1 * cj2 - k1 * ck2) / lenSqr,
-            (i1 * cr2 + r1 * ci2 + j1 * ck2 - k1 * cj2) / lenSqr,
-            (r1 * cj2 - i1 * ck2 + j1 * cr2 + k1 * ci2) / lenSqr,
-            (r1 * ck2 + i1 * cj2 - j1 * ci2 + k1 * cr2) / lenSqr
-        )
+        privResult[R] = (r1 * cr2 - i1 * ci2 - j1 * cj2 - k1 * ck2) / lenSqr
+        privResult[I] = (i1 * cr2 + r1 * ci2 + j1 * ck2 - k1 * cj2) / lenSqr
+        privResult[J] = (r1 * cj2 - i1 * ck2 + j1 * cr2 + k1 * ci2) / lenSqr
+        privResult[K] = (r1 * ck2 + i1 * cj2 - j1 * ci2 + k1 * cr2) / lenSqr
     end
 
-    function multiplyByVector(priv,v)
-        local result = Vector(0,0,0)
-
-        local x,y,z = v_Unpack(v)
+    function multiplyByVector(vout,priv,vin)
+        local x,y,z = v_Unpack(vin)
         local r,i,j,k = q_unpack(priv)
 
         local rr = r * r
@@ -578,13 +640,11 @@ do --helper functions
         local ik = i * k
         local jk = j * k
 
-        v_SetUnpacked(result,
+        v_SetUnpacked(vout,
             rr * x + 2 * rj * z - 2 * rk * y + ii * x + 2 * ij * y + 2 * ik * z - kk * x - jj * x,
             2 * ij * x + jj * y + 2 * jk * z + 2 * rk * x - kk * y + rr * y - 2 * ri * z - ii * y,
             2 * ik * x + 2 * jk * y + kk * z - 2 * rj * x - jj * z + 2 * ri * y - ii * z + rr * z
         )
-
-        return result
     end
 
     function copy(priv)
