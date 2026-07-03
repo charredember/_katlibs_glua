@@ -4,6 +4,7 @@ local EPSILON_QUATERNION = 1e-4
 local vec_meta = FindMetaTable("Vector")
 local v_Unpack = vec_meta.Unpack
 local v_SetUnpacked = vec_meta.SetUnpacked
+local v_Normalize = vec_meta.Normalize
 ---@class Angle
 local ang_meta = FindMetaTable("Angle")
 local a_Unpack = ang_meta.Unpack
@@ -25,6 +26,7 @@ local m_clamp = math.Clamp
 local m_abs = math.abs
 local m_max = math.max
 local m_pi = math.pi
+local s_format = string.format
 local type = type
 local is = KClass.Is
 
@@ -35,7 +37,7 @@ local K = 3
 
 local sign
 local multiplyByNumber,multiplyByQuat,multiplyByVector
-local divideByNumber,divideByQuat
+local divideByNumber,inverseDividedByNumber,divideByQuat
 local getPriv,copy,q_unpack
 
 do --constructors
@@ -54,7 +56,7 @@ do --constructors
 
     ---SHARED, STATIC<br/>
     ---Creates a new KQuaternion from a scalar angle and a unit vector.
-    ---@param a Angle
+    ---@param a number
     ---@param v Vector
     ---@return KQuaternion
     function KQuaternion.FromAxisAngle(a,v)
@@ -114,17 +116,19 @@ do --set/get
             v.x = 1
         end
 
-        return a,v
+        return m_deg(a),v
     end
 
     ---SHARED<br/>
     ---Sets the scalar angle and unit vector axis of the quaternion.
+    ---@param a number
     ---@param v Vector
     function KQuaternion:SetAxisAngle(a,v)
         local priv = getPriv(self)
         local r = m_rad(a)
         local c = m_sin(r / 2.0)
 
+        v_Normalize(v)
         local x,y,z = v_Unpack(v)
         priv[R] = m_cos(r / 2.0)
         priv[I] = c * x
@@ -234,6 +238,14 @@ do --set/get
     end
 
     ---SHARED<br/>
+    ---Returns the squared scalar length of the quaternion.
+    function KQuaternion:GetLengthSqr()
+        local priv = getPriv(self)
+        local r,i,j,k = q_unpack(priv)
+        return r * r + i * i + j * j + k * k
+    end
+
+    ---SHARED<br/>
     ---Gets the R (real) component of the quaternion.
     ---@return number
     function KQuaternion:GetR()
@@ -327,7 +339,9 @@ do --special operations
     ---SHARED<br/>
     ---Returns a new conjugated KQuaternion object.<br/>
     function KQuaternion:GetConjugate()
-        return copy(getPriv(self)):Conjugate()
+        local q = copy(getPriv(self))
+        q:Conjugate()
+        return q
     end
 
     ---SHARED<br/>
@@ -348,7 +362,9 @@ do --special operations
     ---SHARED<br/>
     ---Returns a new normalized KQuaternion object.<br/>
     function KQuaternion:GetNormalized()
-        return copy(getPriv(self)):Normalize()
+        local q = copy(getPriv(self))
+        q:Normalize()
+        return q
     end
 
     ---SHARED<br/>
@@ -359,19 +375,21 @@ do --special operations
         local r,i,j,k = q_unpack(priv)
 
         local lenSqr = r * r + i * i + j * j + k * k
-        if lenSqr > 0 then
-            priv[R] = r / lenSqr
-            priv[I] = -i / lenSqr
-            priv[J] = -j / lenSqr
-            priv[K] = -k / lenSqr
-        end
+        if lenSqr <= 0 then return end
+
+        priv[R] = r / lenSqr
+        priv[I] = -i / lenSqr
+        priv[J] = -j / lenSqr
+        priv[K] = -k / lenSqr
     end
 
     ---SHARED<br/>
     ---Returns a new inverted KQuaternion object.<br/>
     ---@return KQuaternion
     function KQuaternion:GetInverse()
-        return copy(getPriv(self)):Invert()
+        local q = copy(getPriv(self))
+        q:Invert()
+        return q
     end
 
     ---SHARED, STATIC<br/>
@@ -405,7 +423,7 @@ do --special operations
 end
 
 do --metafunctions
-    local meta = getmetatable(KQuaternion)
+    local meta = getPriv(KQuaternion).GetObjectMeta()
 
     ---@class KQuaternion
     ---@operator mul(KQuaternion): KQuaternion
@@ -442,7 +460,7 @@ do --metafunctions
             if type(q2nv) == "number" then return divideByNumber(privQ1,q2nv) end
         end
 
-        if type(q1n) == "number" and is(q2nv,KQuaternion) then return divideByNumber(getPriv(q2nv),q1n) end
+        if type(q1n) == "number" and is(q2nv,KQuaternion) then return inverseDividedByNumber(getPriv(q2nv),q1n) end
 
         error("Type not supported by this operation!",2)
     end
@@ -473,6 +491,10 @@ do --metafunctions
             and m_abs(j2 - j1) <= EPSILON_QUATERNION
             and m_abs(k2 - k1) <= EPSILON_QUATERNION
     end
+
+    meta.__tostring = function(q)
+        return s_format("%.6f %.6f %.6f %.6f",q_unpack(getPriv(q)))
+    end
 end
 
 do --helper functions
@@ -491,6 +513,24 @@ do --helper functions
             priv[I] / num,
             priv[J] / num,
             priv[K] / num
+        )
+    end
+
+    function inverseDividedByNumber(priv,num)
+        local r,i,j,k = q_unpack(priv)
+        local lenSqr = r * r + i * i + j * j + k * k
+
+        if lenSqr <= 0 then
+            local nan = 0 / 0
+            return KQuaternion(nan,nan,nan,nan)
+        end
+
+        local n = lenSqr / num
+        return KQuaternion(
+            r / n,
+            -i / n,
+            -j / n,
+            -k / n
         )
     end
 
