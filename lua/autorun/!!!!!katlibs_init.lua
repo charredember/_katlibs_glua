@@ -3,6 +3,7 @@ local function includeSH(path)
     include(path)
 end
 
+--TODO: Move preload libraries out of universal to their own root folder.
 includeSH("katlibs/universal/preload/kerror.lua")
 includeSH("katlibs/universal/preload/kclass.lua")
 includeSH("katlibs/universal/preload/kautoloader.lua")
