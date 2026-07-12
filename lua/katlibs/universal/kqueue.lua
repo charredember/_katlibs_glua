@@ -15,6 +15,8 @@ KQueue,getPriv = KClass(function()
 end)
 
 ---SHARED<br/>
+---Whether this queue contains any elements.<br/>
+---COMPLEXITY: O(1) (cached)
 function KQueue:Any()
     local priv = getPriv(self)
 
@@ -22,6 +24,9 @@ function KQueue:Any()
 end
 
 ---SHARED<br/>
+---Returns the amount of elements in this queue.<br/>
+---COMPLEXITY: O(1) (cached)
+---@return integer
 function KQueue:Count()
     local priv = getPriv(self)
 
@@ -31,6 +36,8 @@ function KQueue:Count()
 end
 
 ---SHARED<br/>
+---Pushes an element onto the left side of this queue.<br/>
+---COMPLEXITY: O(1)
 function KQueue:PushLeft(value)
     local priv = getPriv(self)
 
@@ -40,6 +47,8 @@ function KQueue:PushLeft(value)
 end
 
 ---SHARED<br/>
+---Pushes an element onto the right side of this queue.<br/>
+---COMPLEXITY: O(1)
 function KQueue:PushRight(value)
     local priv = getPriv(self)
 
@@ -49,6 +58,9 @@ function KQueue:PushRight(value)
 end
 
 ---SHARED<br/>
+---Returns the left-most element in this queue.<br/>
+---COMPLEXITY: O(1)
+---@return any
 function KQueue:GetLeft()
     local priv = getPriv(self)
 
@@ -56,6 +68,9 @@ function KQueue:GetLeft()
 end
 
 ---SHARED<br/>
+---Returns the right-most element in this queue.<br/>
+---COMPLEXITY: O(1)
+---@return any
 function KQueue:GetRight()
     local priv = getPriv(self)
 
@@ -63,6 +78,9 @@ function KQueue:GetRight()
 end
 
 ---SHARED<br/>
+---Removes and returns the left-most element in this queue.<br/>
+---COMPLEXITY: O(1)
+---@return any
 function KQueue:PopLeft()
     local priv = getPriv(self)
 
@@ -76,6 +94,9 @@ function KQueue:PopLeft()
 end
 
 ---SHARED<br/>
+---Removes and returns the right-most element in this queue.<br/>
+---COMPLEXITY: O(1)
+---@return any
 function KQueue:PopRight()
     local priv = getPriv(self)
 
@@ -91,7 +112,9 @@ end
 local noOp = function() return nil end
 
 ---SHARED<br/>
----Returns an iterator function for this queue.
+---Returns an iterator function for this queue.<br/>
+---COMPLEXITY: O(n)
+---@return fun(): integer?, any?
 function KQueue:Iterator()
     local priv = getPriv(self)
 
