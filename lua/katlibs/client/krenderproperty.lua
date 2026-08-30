@@ -2,9 +2,9 @@ local RENDERFUNCTION_TEMPLATE =
 [[
 %s
 
-return function(drawCall)
+return function(drawCall,...)
 %s
-    drawCall()
+    drawCall(...)
 %s
 end
 ]]
@@ -22,16 +22,25 @@ local util_SHA256 = util.SHA256
 local JSONToSequentialTable,compileRenderCall
 
 ---@class KVP_PropertyInfo
----@field SetupRenderCall function Called post-render to reset the renderstate.
----@field SetupParameters? any[] Parameters that will be passed into CleanupRenderCall post-render.
----@field CleanupRenderCall? function Called post-render to reset the renderstate.
----@field CleanupParameters? any[] Parameters that will be passed into CleanupRenderCall post-render.
+---@field PreRenderCall? function Called post-render to reset the renderstate.
+---@field PreRenderCallParameters? any[] Parameters that will be passed into PostRenderCall post-render.
+---@field PostRenderCall? function Called post-render to reset the renderstate.
+---@field PostRenderParameters? any[] Parameters that will be passed into PostRenderCall post-render.
 
 local getPriv
 ---CLIENT<br/>
 ---Extendable readable and writable description of a rendering property.
 ---@class KRenderProperty
 KRenderProperty,getPriv = KClass()
+
+do --metafunctions
+    local meta = getPriv(KRenderProperty).GetObjectMeta()
+
+    meta.__tostring = function(self)
+        local priv = getPriv(self)
+        return s_format("KRenderProperty(%s,%s)",priv.PropertyID,util_TableToJSON(priv.JsonParameters))
+    end
+end
 
 do --methods
     ---CLIENT<br/>
@@ -51,7 +60,7 @@ do --static functions
     local jsonConstructors = {}
     local instantiate = getPriv(KRenderProperty).Instantiate
     ---CLIENT, STATIC<br/>
-    ---Defines a new visual property that modifies a render call.<br/>
+    ---Defines a new savable visual property that modifies a render call.<br/>
     --- - <b>Ensure all constructor arguments are JSON serializable!<b><br/>
     ---@param propertyID string
     ---@param constructor fun(...): KVP_PropertyInfo
@@ -60,15 +69,14 @@ do --static functions
         jsonConstructors[propertyID] = constructor
         return function(...)
             local propertyInfo = constructor(...)
-            if not propertyInfo.SetupParameters then error("Property implementation error: Missing required SetupRenderCall definition!",2) end
 
             return instantiate({
                 PropertyID = propertyID,
                 JsonParameters = {...},
-                SetupRenderCall = propertyInfo.SetupRenderCall,
-                SetupParameters = propertyInfo.SetupParameters,
-                CleanupRenderCall = propertyInfo.CleanupRenderCall,
-                CleanupParameters = propertyInfo.CleanupParameters,
+                PreRenderCall = propertyInfo.PreRenderCall,
+                PreRenderCallParameters = propertyInfo.PreRenderCallParameters,
+                PostRenderCall = propertyInfo.PostRenderCall,
+                PostRenderParameters = propertyInfo.PostRenderParameters,
             })
         end
     end
@@ -104,14 +112,35 @@ do --static functions
             t_insert(result,instantiate({
                 PropertyID = propertyID,
                 JsonParameters = parameters,
-                SetupRenderCall = propertyInfo.SetupRenderCall,
-                SetupParameters = propertyInfo.SetupParameters,
-                CleanupRenderCall = propertyInfo.CleanupRenderCall,
-                CleanupParameters = propertyInfo.CleanupParameters,
+                PreRenderCall = propertyInfo.PreRenderCall,
+                PreRenderCallParameters = propertyInfo.PreRenderCallParameters,
+                PostRenderCall = propertyInfo.PostRenderCall,
+                PostRenderParameters = propertyInfo.PostRenderParameters,
             }))
         end
 
         return result
+    end
+
+    ---STATIC, CLIENT<br/>
+    ---Merges two sets of KRenderProperties.
+    ---Overwrites duplicate PropertyIDs in the destination with the source.<br/>
+    ---@param destination KRenderProperty[]
+    ---@param source KRenderProperty[]
+    function KRenderProperty.Merge(destination,source)
+        local dictionary = {}
+        for i,property in ipairs(destination) do
+            dictionary[getPriv(property).PropertyID] = i
+        end
+
+        for _,property in ipairs(source) do
+            local overrwriteIndex = dictionary[getPriv(property).PropertyID]
+            if overrwriteIndex then
+                destination[overrwriteIndex] = property
+            else
+                t_insert(destination,property)
+            end
+        end
     end
 
     ---STATIC, CLIENT<br/>
@@ -131,6 +160,7 @@ do --static functions
     ---STATIC, CLIENT<br/>
     ---Compiles multiple KRenderProperties into a single render function.
     ---@param properties KRenderProperty[]
+    ---@return fun(drawModel: function, params: ...)
     function KRenderProperty.Compile(properties)
         local env = {
             Parameters = {},
@@ -146,15 +176,15 @@ do --static functions
             local priv = getPriv(property)
 
             context.FunctionName = "Setup" .. priv.PropertyID
-            context.Function = priv.SetupRenderCall
+            context.Function = priv.PreRenderCall
             context.FunctionCalls = setupCalls
-            context.Parameters = priv.SetupParameters
+            context.Parameters = priv.PreRenderCallParameters
             compileRenderCall(env,localizations,context)
 
             context.FunctionName = "Cleanup" .. priv.PropertyID
-            context.Function = priv.CleanupRenderCall
+            context.Function = priv.PostRenderCall
             context.FunctionCalls = cleanupCalls
-            context.Parameters = priv.CleanupParameters
+            context.Parameters = priv.PostRenderParameters
             compileRenderCall(env,localizations,context)
         end
 
@@ -163,9 +193,10 @@ do --static functions
             t_concat(setupCalls,"\n"),
             t_concat(cleanupCalls,"\n"))
 
-        local renderFunc = CompileString(code,"KRenderProperty")
-        setfenv(renderFunc,env)
-        return renderFunc
+        file.Write(string.format("rproperty_%s.txt",KRenderProperty.GetUniqueHash(properties)),code)
+        local getRenderFunc = CompileString(code,"KRenderProperty")
+        setfenv(getRenderFunc,env)
+        return getRenderFunc()
     end
 end
 
@@ -177,9 +208,9 @@ do --implementations
         "ModelMaterialOverride",
         function(materialName)
             return {
-                SetupRenderCall = render.ModelMaterialOverride,
-                SetupParameters = {Material(materialName)},
-                CleanupRenderCall = render.ModelMaterialOverride,
+                PreRenderCall = render.ModelMaterialOverride,
+                PreRenderCallParameters = {Material(materialName)},
+                PostRenderCall = render.ModelMaterialOverride,
             }
         end
     )
@@ -191,8 +222,10 @@ do --implementations
         "ColorModulation",
         function(red,green,blue)
             return {
-                SetupRenderCall = render.SetColorModulation,
-                SetupParameters = {red,green,blue},
+                PreRenderCall = render.SetColorModulation,
+                PreRenderCallParameters = {red,green,blue},
+                PostRenderCall = render.SetColorModulation,
+                PostRenderParameters = {1,1,1},
             }
         end
     )
@@ -204,8 +237,8 @@ do --implementations
         "Blend",
         function(alpha)
             return {
-                SetupRenderCall = render.SetBlend,
-                SetupParameters = {alpha},
+                PreRenderCall = render.SetBlend,
+                PreRenderCallParameters = {alpha},
             }
         end
     )
@@ -217,10 +250,10 @@ do --implementations
         "SuppressEngineLighting",
         function()
             return {
-                SetupRenderCall = render.SetBlend,
-                SetupParameters = {true},
-                CleanupRenderCall = render.ModelMaterialOverride,
-                CleanupParameters = {true},
+                PreRenderCall = render.SuppressEngineLighting,
+                PreRenderCallParameters = {true},
+                PostRenderCall = render.SuppressEngineLighting,
+                PostRenderParameters = {false},
             }
         end
     )

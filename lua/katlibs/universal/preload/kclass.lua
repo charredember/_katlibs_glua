@@ -9,7 +9,7 @@ local classInternalsLookup = setmetatable({},{__mode = "k"})
 ---@class _KClassParams
 ---@field InheritedClass any? A class that this new class will derive from.
 ---@field Destructor fun(priv: table)? A destructor for objects of this class to be called when they are cleaned by the GC.
----@field Abstract boolean? Whether this class is abstract.
+---@field AbstractConstructor KClassConstructor? Marks the class as abstract and defines the protected constructor.
 
 ---@class _KClassPriv A table that holds the private members of a class or object.
 ---@field GetFactory any A method that returns a new constructor for this class.
@@ -28,8 +28,8 @@ local function implementInheritance(classInternals)
 		local inheritedInternals = classInternalsLookup[inheritedClass]
 		classMetatable.__index = inheritedClass
 
-		local inheritedPublicConstructor = inheritedInternals.PublicConstructor
-		if not inheritedPublicConstructor then error("Cannot inherit from a KClass without a public constructor!") end
+		local inheritedConstructor = inheritedInternals.AbstractConstructor or inheritedInternals.PublicConstructor
+		if not inheritedConstructor then error("Cannot inherit from KClass - no public or abstract constructor found!") end
 
 		local basePopulateObjectPriv = inheritedInternals.PopulateObjectPriv
 		function classInternals.PopulateObjectPriv(object,constructor,...)
@@ -37,7 +37,7 @@ local function implementInheritance(classInternals)
 			local priv = constructor(...) or {}
 			classPrivDirectory[object] = priv
 			if not baseClassArgs then error("Failed to call KClass.CallBaseConstructor in inherited class!") end
-			basePopulateObjectPriv(object,inheritedPublicConstructor,unpack(baseClassArgs))
+			basePopulateObjectPriv(object,inheritedConstructor,unpack(baseClassArgs))
 			return priv
 		end
 
@@ -98,16 +98,8 @@ end
 local function implementPublicConstructor(classInternals)
 	local classMetatable = classInternals.Metatable
 	local publicConstructor = classInternals.PublicConstructor
-	local abstract = classInternals.Abstract
 
 	if not publicConstructor then return end
-
-	if abstract then
-		classMetatable.__call = function(_,...)
-			error("This KClass is abstract and is not meant to be instantiated at this level!")
-		end
-		return
-	end
 
 	local publicFactory = createObjectFactory(classInternals,publicConstructor)
 	classMetatable.__call = function(_,...)
@@ -124,7 +116,8 @@ KClass = setmetatable({},{
 		params = params or {}
 		KError.ValidateNullableArg("publicConstructor",KVarConditions.Function(publicConstructor))
 		KError.ValidateNullableArg("params.Destructor",KVarConditions.Function(params.Destructor))
-		KError.ValidateNullableArg("params.Abstract",KVarConditions.Bool(params.Abstract))
+		KError.ValidateNullableArg("params.AbstractConstructor",KVarConditions.Function(params.AbstractConstructor))
+		assert(params.AbstractConstructor == nil or publicConstructor == nil,"Cannot have both a public and abstract constructor!")
 		assert(params.InheritedClass == nil or classInternalsLookup[params.InheritedClass] ~= nil,"params.InheritedClass is not a KClass!")
 
 		local objectMetatable = {}
@@ -136,9 +129,9 @@ KClass = setmetatable({},{
 			Metatable = classMetatable,
 			PrivDirectory = classPrivDirectory,
 			PublicConstructor = publicConstructor,
+			AbstractConstructor = params.AbstractConstructor,
 			InheritedClass = params.InheritedClass,
 			Destructor = params.Destructor,
-			Abstract = params.Abstract,
 			ObjectMetatable = objectMetatable,
 			--PopulateObjectPriv
 		}
