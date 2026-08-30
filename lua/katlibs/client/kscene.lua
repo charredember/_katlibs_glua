@@ -16,7 +16,6 @@ local mesh_AdvanceVertex = mesh.AdvanceVertex
 local mesh_End = mesh.End
 local m_ceil = math.ceil
 local t_insert = table.insert
-local RENDERMODE_NORMAL = RENDERMODE_NORMAL
 ---@class _KSceneInternal
 local internal = {}
 table.Inherit(internal,include("kscene/handle.lua"))

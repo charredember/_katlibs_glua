@@ -53,7 +53,6 @@ function KAutoLoader.IncludeDir(directory,params)
 	local recursive = params.Recursive == nil and true or false
 	KError.ValidateArg("params.Recursive",KVarConditions.Bool(recursive))
 
-	directory = directory .. "/"
 	local files, directories = file.Find(directory .. "*","LUA")
 
 	for _,v in ipairs(files) do
