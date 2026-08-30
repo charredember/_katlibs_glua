@@ -8,9 +8,29 @@ local CurTime = CurTime
 local SysTime = SysTime
 local assert = assert
 
-local KError_ValidateArg = KError.ValidateArg
-local KVarConditions_NumberGreater = KVarConditions.NumberGreater
-local KVarConditions_Function = KVarConditions.Function
+---SHARED, STATIC<br/>
+---Returns a new lightweight tween function.
+---Returns a number in the range [0-1] based on time since (object creation time + initial delay) over set duration.<br/>
+---Starts at object creation time + initial delay.<br/>
+---@param duration number
+---@param startDelay number?
+---@return fun(): number
+function KTimeUtils.Tween(duration,startDelay)
+    KError.ValidateArg("duration",KVarConditions.NumberGreater(duration,0))
+    KError.ValidateNullableArg("startDelay",KVarConditions.NumberGreaterOrEqual(startDelay,0))
+    if not startDelay then startDelay = 0 end
+
+    local savedTime = CurTime() + startDelay
+    local dt
+
+    return function()
+        dt = CurTime() - savedTime
+
+        if dt < 0 then return 0 end
+        if dt <= duration then return dt / duration end
+        return 1
+    end
+end
 
 ---SHARED, STATIC<br/>
 ---A tween that runs inside a coroutine.<br/>
@@ -20,23 +40,51 @@ local KVarConditions_Function = KVarConditions.Function
 ---@param func fun(up: number,...)
 function KTimeUtils.TweenAsync(duration,func,...)
     assert(co_running(),"TweenAsync called outside of coroutine!")
-    KError_ValidateArg("duration",KVarConditions_NumberGreater(duration,0))
-    KError_ValidateArg("func",KVarConditions_Function(func))
+    KError.ValidateArg("duration",KVarConditions.NumberGreater(duration,0))
+    KError.ValidateArg("func",KVarConditions.Function(func))
 
     local savedTime = CurTime()
-    local DT
+    local dt
 
     while true do
-        DT = CurTime() - savedTime
+        dt = CurTime() - savedTime
 
-        if DT <= duration then
-            func(DT / duration,...)
+        if dt <= duration then
+            func(dt / duration,...)
         else
             func(1,...)
             break
         end
 
         co_yield()
+    end
+end
+
+---SHARED, STATIC<br/>
+---Returns a new lightweight throttling function.
+---After returning true once, it will return false until the interval passes, resetting it back to true.
+---@param interval number
+---@param startTrue boolean?
+---@return fun(): boolean
+function KTimeUtils.IntervalTrigger(interval,startTrue)
+    KError.ValidateArg("interval",KVarConditions.NumberGreater(interval,0))
+
+    local savedTime = CurTime()
+    local t
+
+    return function()
+        if startTrue then
+            startTrue = false
+            return true
+        end
+
+        t = CurTime()
+        if (t - savedTime) > interval then
+            savedTime = t
+            return true
+        end
+
+        return false
     end
 end
 
@@ -55,5 +103,25 @@ function KTimeUtils.RunWrappedCoroutineWithQuota(quota,coroutineFunc)
         local result = coroutineFunc()
         if result ~= nil then return result end
         if (SysTime() - savedTime) > quota then return end
+    end
+end
+
+---SHARED, STATIC<br/>
+---Creates a new quadratic ease function.<br/>
+---@param power number
+---@param easeStart number
+---@return fun(up: number) : number
+function KTimeUtils.QuadraticEaseInOut(power,easeStart)
+    KError.ValidateArg("power",KVarConditions.NumberGreater(power,0))
+    KError.ValidateArg("easeStart",KVarConditions.NumberInRange(easeStart,0,1))
+
+    local easeInConstant = 1 / (easeStart ^ (power - 1))
+    local easeOutConstant = (1 - easeStart) ^ (power - 1)
+    return function(up)
+        if up < easeStart then
+            return easeInConstant * up ^ power
+        else
+            return 1 - (((1 - up) ^ power) / easeOutConstant)
+        end
     end
 end
