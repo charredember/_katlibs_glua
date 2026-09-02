@@ -8,6 +8,7 @@ local getPriv
 ---@class KSceneHandle
 KSceneHandle,getPriv = KClass(nil,{
     Destructor = function(priv)
+        if not priv.Valid then return end
         priv.OnDestroy(priv.UID)
     end
 })
@@ -48,6 +49,7 @@ end
 
 function KSceneHandle:Destroy()
     local priv = getPriv(self)
+    priv.OnDestroy(priv.UID)
     priv.Valid = false
 end
 
