@@ -1,9 +1,9 @@
 local SYSTEM_NAME = "KNetChannel"
 if SERVER then util.AddNetworkString(SYSTEM_NAME) end
 
-local function netStart(id,callback,...)
+local function netStart(syncedToken,callback,...)
     net.Start(SYSTEM_NAME)
-    KSyncedToken.WriteToNet(id)
+    syncedToken:WriteToNet()
 
     local bytesUsedStart = net.BytesWritten()
     callback(...)
@@ -25,10 +25,14 @@ local function netSend(players)
 end
 
 local getPriv
-KNetChannel,getPriv = KClass(function(identifier,burstLimit,regenRate,unreliable)
+---SHARED<br/>
+---A throttled net channel that can queue messages to send over time.<br/>
+---Multiple differently throttled channels can send to the same receiver.
+---@class KNetChannel
+---@overload fun(syncedToken: KSyncedToken, burstLimit: number, regenRate: number, unreliable: boolean?): KNetChannel
+KNetChannel,getPriv = KClass(function(syncedToken,burstLimit,regenRate,unreliable)
     return {
-        SyncedToken = SERVER and KSyncedToken.Get(identifier),
-        Identifier = identifier,
+        SyncedToken = syncedToken,
         Queue = KQueue(),
         TokenBucket = KTimeUtils.TokenBucket(burstLimit,regenRate,true),
         BurstLimit = burstLimit,
@@ -38,10 +42,17 @@ end)
 
 local activeChannels = setmetatable({},{__mode = "v"})
 
+---SHARED<br/>
+---Send a message over the net channel.<br/>
+---<b>Do not call net.Start(), net.Broadcast(), net.Send(), or net.SendToServer() in the callback!</b>
+---@param callback function
+---@param players Player | Player[] | CRecipientFilter | nil
+---@param ... any Parameters to pass to callback.
+---@return boolean sent Whether the message was sent immediately
 function KNetChannel:Send(callback,players,...)
     local priv = getPriv(self)
 
-    local cost = netStart(priv.Identifier,callback,...)
+    local cost = netStart(priv.SyncedToken,callback,...)
     if cost > priv.BurstLimit then
         net.Abort()
         error(string.format("Net channel burst limit exceeded! (%d > %d)",cost,priv.BurstLimit))
@@ -71,6 +82,8 @@ function KNetChannel:Send(callback,players,...)
     return true
 end
 
+---SHARED<br/>
+---Empties the channel of any queued messages.<br/>
 function KNetChannel:Flush()
     getPriv(self).Queue = KQueue()
 end
@@ -88,25 +101,23 @@ hook.Add("Tick",SYSTEM_NAME,function()
         local message = queue:GetLeft()
         if not priv.TokenBucket(message.Cost) then continue end
 
-        netStart(priv.Identifier,message.Callback,unpack(message.Args))
+        netStart(priv.SyncedToken,message.Callback,unpack(message.Args))
         netSend(message.Players)
         queue:PopLeft()
     end
 end)
 
 local callbacks = {}
-function KNetChannel.Receive(identifier,callback)
-    callbacks[identifier] = isfunction(callback) and {
-        SyncedToken = SERVER and KSyncedToken.Get(identifier),
-        Callback = callback
-    } or nil
+---SHARED<br/>
+---Sets a receiver for the net channel.<br/>
+---@param syncedToken KSyncedToken
+---@param callback fun(len: number, ply: Player)
+function KNetChannel.Receive(syncedToken,callback)
+    callbacks[syncedToken] = callback
 end
 
 net.Receive(SYSTEM_NAME,function(len,ply)
-    local identifier = KSyncedToken.ReadFromNet()
-
-    local callback = callbacks[identifier].Callback
-    if not callback then return end
-
-    callback(len,ply)
+    local syncedToken = KSyncedToken.ReadFromNet()
+    local callback = callbacks[syncedToken]
+    if callback then callback(len,ply) end
 end)

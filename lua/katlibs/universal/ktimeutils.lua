@@ -98,7 +98,7 @@ end
 ---SHARED, STATIC<br/>
 ---Returns a new lightweight token bucket function.<br/>
 ---@param burstLimit number
----@param regenRate boolean?
+---@param regenRate number
 ---@param useSysTime boolean?
 ---@return fun(use: number): success: boolean, bucket: number
 function KTimeUtils.TokenBucket(burstLimit,regenRate,useSysTime)

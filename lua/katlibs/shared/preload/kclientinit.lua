@@ -4,10 +4,6 @@ KClientInit = {}
 
 local SYSTEM_NAME = "KClientInit"
 
-local h_Run = hook.Run
-local n_Start = net.Start
-local n_SendToServer = net.SendToServer
-
 if SERVER then
 	local logger = KLogger(SYSTEM_NAME)
 	util.AddNetworkString(SYSTEM_NAME)
@@ -99,6 +95,8 @@ if SERVER then
 		if alreadyLoaded[ply] then return end
 		alreadyLoaded[ply] = true
 
+		ProtectedCall(hook.Run,"KClientPreInit",ply)
+
 		for i = 1,#registered do
 			ProtectedCall(registered[i].Callback,ply)
 		end
@@ -106,12 +104,21 @@ if SERVER then
 		logger:LogConsole(string.format(
 			"Initialized %i libraries for player %s.",#registered,ply:Nick()))
 
-		ProtectedCall(h_Run,"KOnClientInit",ply) -- Depreciated
-		ProtectedCall(h_Run,"KClientPostInit",ply)
+		ProtectedCall(hook.Run,"KOnClientInit",ply) -- Depreciated
+		ProtectedCall(hook.Run,"KClientPostInit",ply)
+
+		net.Start(SYSTEM_NAME)
+		net.Send(ply)
 	end)
 elseif CLIENT then
 	hook.Add("InitPostEntity",SYSTEM_NAME,function()
-		n_Start(SYSTEM_NAME)
-		n_SendToServer()
+		ProtectedCall(hook.Run,"KClientPreInit")
+
+		net.Start(SYSTEM_NAME)
+		net.SendToServer()
+	end)
+
+	net.Receive(SYSTEM_NAME,function()
+		ProtectedCall(hook.Run,"KClientPostInit")
 	end)
 end
